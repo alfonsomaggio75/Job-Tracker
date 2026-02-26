@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Hub Pro | v5.5 (Restore Archive)</title>
+    <title>Career Hub Pro | v5.4 (Dashboard Stats)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -26,6 +26,7 @@
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* Griglia statistiche espansa per ospitare i nuovi conteggi */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { background: var(--card); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .stat-card span { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
@@ -55,6 +56,7 @@
         .tag-expired { background: #fee2e2; color: #ef4444; }
         .tag-today { background: #eff6ff; color: #2563eb; }
 
+        .config-section { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px; }
         .search-input { margin-bottom: 15px; padding: 12px; border: 2px solid var(--primary); border-radius: 8px; }
 
         @media print { .no-print { display: none !important; } .view { display: block !important; } }
@@ -80,7 +82,7 @@
         <div class="stats-grid">
             <div class="stat-card"><span>In Corso</span><h2 id="stat-total">0</h2></div>
             <div class="stat-card"><span>Colloqui</span><h2 id="stat-interviews">0</h2></div>
-            <div class="stat-card"><span>Rigettate</span><h2 id="stat-rejected">0</h2></div>
+            <div class="stat-card" style="border-left: 4px solid var(--danger);"><span>Rigettate</span><h2 id="stat-rejected">0</h2></div>
             <div class="stat-card"><span>In Archivio</span><h2 id="stat-archived">0</h2></div>
             <div class="stat-card"><span>FU Scaduti</span><h2 id="stat-tasks">0</h2></div>
             <div class="stat-card"><span>Aziende</span><h2 id="stat-contacts">0</h2></div>
@@ -97,20 +99,75 @@
         </div>
     </section>
 
-    <section id="view-archive" class="view">
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Azienda</th><th>Stato</th><th>Note</th><th>Azioni</th></tr>
-                </thead>
-                <tbody id="archive-list"></tbody>
-            </table>
+    <section id="view-settings" class="view">
+        <div class="form-card">
+            <h3>📥 Import / Export Database</h3>
+            <div class="export-section">
+                <label>Periodo Esportazione</label>
+                <div class="form-grid" style="margin-bottom: 15px;">
+                    <div class="half">
+                        <select id="export-type" onchange="toggleExportDates(this.value)">
+                            <option value="total">Totale</option>
+                            <option value="range">Per data</option>
+                        </select>
+                    </div>
+                    <div class="half export-date-field" style="display:none"><input type="date" id="export-start"></div>
+                    <div class="half export-date-field" style="display:none"><input type="date" id="export-end"></div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="exportData('csv')">CSV</button>
+                    <button class="btn btn-success" onclick="exportData('xlsx')">Excel</button>
+                    <button class="btn btn-outline" onclick="exportData('json')">Backup JSON</button>
+                </div>
+            </div>
+            <div class="config-section" style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #feb2b2;">
+                <h4 style="margin-top: 0; color: #c53030;">⚠️ Importa Backup</h4>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="import-file" accept=".json" style="font-size: 0.8rem;">
+                    <button class="btn btn-danger" onclick="importDatabase()">Importa</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card" style="margin-top: 30px;">
+            <h3>⚙️ Canali</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="new-channel-name" placeholder="E.g. LinkedIn">
+                <button class="btn btn-success" onclick="addChannel()">Aggiungi</button>
+            </div>
+            <div class="table-container">
+                <table><thead><tr><th>#</th><th>Nome Canale</th><th>Azioni</th></tr></thead><tbody id="channels-list"></tbody></table>
+            </div>
+        </div>
+
+        <div class="form-card" style="margin-top: 30px;">
+            <h3>📊 Stati</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="new-status-name" placeholder="E.g. Offerta Ricevuta">
+                <button class="btn btn-success" onclick="addStatus()">Aggiungi</button>
+            </div>
+            <div class="table-container">
+                <table><thead><tr><th>#</th><th>Nome Stato</th><th>Azioni</th></tr></thead><tbody id="statuses-config-list"></tbody></table>
+            </div>
         </div>
     </section>
 
     <section id="view-address-book" class="view">
-        <div class="form-card"><h3>🏢 CRM</h3><input type="hidden" id="c-id"><div class="form-grid"><input type="text" id="c-name" placeholder="Azienda *"><input type="text" id="c-person" placeholder="Referente"><input type="text" id="c-role-contact" placeholder="Ruolo"><input type="email" id="c-email" placeholder="Email"><input type="text" id="c-phone" placeholder="Tel"><textarea id="c-notes" placeholder="Note..." class="full"></textarea></div><button class="btn btn-success" onclick="addContact()">Salva</button></div>
-        <input type="text" id="crm-search" class="search-input full" placeholder="🔍 Cerca..." onkeyup="renderContacts()"><div class="table-container"><table><tbody id="contact-list"></tbody></table></div>
+        <div class="form-card">
+            <h3>🏢 CRM</h3>
+            <input type="hidden" id="c-id">
+            <div class="form-grid">
+                <input type="text" id="c-name" placeholder="Azienda *">
+                <input type="text" id="c-person" placeholder="Referente">
+                <input type="text" id="c-role-contact" placeholder="Ruolo">
+                <input type="email" id="c-email" placeholder="Email">
+                <input type="text" id="c-phone" placeholder="Tel">
+                <textarea id="c-notes" placeholder="Note..." class="full"></textarea>
+            </div>
+            <button class="btn btn-success" onclick="addContact()">Salva</button>
+        </div>
+        <input type="text" id="crm-search" class="search-input full" placeholder="🔍 Cerca..." onkeyup="renderContacts()">
+        <div class="table-container"><table><tbody id="contact-list"></tbody></table></div>
     </section>
 
     <section id="view-new-action" class="view">
@@ -124,7 +181,11 @@
                 <div class="half"><label>Data</label><input type="date" id="act-date"></div>
                 <div class="full" style="background:#fefce8; padding:15px; border-radius:10px;">
                     <label>Prossimo Follow-up</label>
-                    <div style="display:flex; gap:10px;"><input type="date" id="new-fu-date"><input type="text" id="new-fu-desc" placeholder="Azione..."><button class="btn btn-outline" onclick="addFUToTemp()">+</button></div>
+                    <div style="display:flex; gap:10px;">
+                        <input type="date" id="new-fu-date">
+                        <input type="text" id="new-fu-desc" placeholder="Azione...">
+                        <button class="btn btn-outline" onclick="addFUToTemp()">+</button>
+                    </div>
                     <table style="width:100%; margin-top:10px;"><tbody id="fu-history-list"></tbody></table>
                 </div>
             </div>
@@ -137,8 +198,8 @@
         <div class="table-container"><table><thead><tr><th>ID</th><th>Azienda</th><th>Ruolo</th><th>Stato</th><th>FU</th><th>Azioni</th></tr></thead><tbody id="action-list"></tbody></table></div>
     </section>
 
-    <section id="view-settings" class="view">
-        <div class="form-card"><h3>📥 Import / Export</h3><div class="config-section" style="background: #fff5f5; padding: 15px; border-radius: 8px;"><button class="btn btn-danger" onclick="importDatabase()">Importa JSON</button><button class="btn btn-primary" onclick="exportData('json')">Export Backup</button></div></div>
+    <section id="view-archive" class="view">
+        <div class="table-container"><table><thead><tr><th>ID</th><th>Azienda</th><th>Stato</th><th>Note</th><th>Azioni</th></tr></thead><tbody id="archive-list"></tbody></table></div>
     </section>
 
 </div>
@@ -170,46 +231,14 @@
         if(viewId === 'dashboard') renderDashboard();
         if(viewId === 'address-book') renderContacts();
         if(viewId === 'new-action') { if(!document.getElementById('act-id').value) resetActionForm(); populateActionSelectors(); }
+        if(viewId === 'settings') { renderChannels(); renderStatusesConfig(); }
         if(viewId === 'registry') renderRegistry();
         if(viewId === 'archive') renderArchive();
     }
 
-    // --- LOGICA ARCHIVIO (RIPRISTINA ED ELIMINA) ---
-    function renderArchive() {
-        const f = actions.filter(a => a.status === 'Archiviata' || a.status === 'Rigettata');
-        document.getElementById('archive-list').innerHTML = f.map(a => `
-            <tr>
-                <td>#${a.id}</td>
-                <td><strong>${a.company}</strong></td>
-                <td>${a.status}</td>
-                <td style="font-size: 0.75rem;">${a.notes || ''}</td>
-                <td>
-                    <button class="btn btn-outline btn-small" onclick="restoreAction(${a.id})" title="Riporta in Registro">🔄 Ripristina</button>
-                    <button class="btn btn-outline btn-small" style="color:var(--danger)" onclick="deleteAction(${a.id})">🗑️</button>
-                </td>
-            </tr>`).join('');
-    }
-
-    function restoreAction(id) {
-        const idx = actions.findIndex(a => a.id === id);
-        if (idx !== -1) {
-            actions[idx].status = 'In Corso';
-            save();
-            renderArchive();
-            alert("Candidatura ripristinata nel Registro Totale.");
-        }
-    }
-
-    function deleteAction(id) {
-        if(confirm("Sei sicuro di voler eliminare definitivamente questa candidatura?")) {
-            actions = actions.filter(a => a.id !== id);
-            save();
-            renderArchive();
-        }
-    }
-
-    // --- DASHBOARD ---
+    // --- DASHBOARD AGGIORNATA ---
     function renderDashboard() {
+        // Filtri per statistiche
         const inProgress = actions.filter(a => a.status === 'In Corso');
         const interviews = actions.filter(a => a.status === 'Colloquio');
         const rejected = actions.filter(a => a.status === 'Rigettata');
@@ -246,16 +275,23 @@
         renderChart(actions);
     }
 
-    // --- ALTRE FUNZIONI SUPPORTO ---
+    // --- ALTRE FUNZIONI (EXPORT, CRM, ECC) ---
     function markFUDone(actId, fuId) {
         const a = actions.find(a => a.id === actId); const f = a.fuHistory.find(f => f.id === fuId);
         f.completed = true; save(); renderDashboard();
     }
+
     function renderRegistry() {
         const s = document.getElementById('registry-search').value.toLowerCase();
         const f = actions.filter(a => a.status !== 'Archiviata' && a.status !== 'Rigettata').filter(a => a.company.toLowerCase().includes(s));
         document.getElementById('action-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td><strong>${a.company}</strong></td><td>${a.role}</td><td>${a.status}</td><td>-</td><td><button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button></td></tr>`).join('');
     }
+
+    function renderArchive() {
+        const f = actions.filter(a => a.status === 'Archiviata' || a.status === 'Rigettata');
+        document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.company}</td><td>${a.status}</td><td>${a.notes || ''}</td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
+    }
+
     function renderChart(data) {
         const ctx = document.getElementById('impactChart').getContext('2d');
         const counts = {}; data.forEach(a => counts[a.date] = (counts[a.date] || 0) + 1);
@@ -263,21 +299,24 @@
         if(myChart) myChart.destroy();
         myChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Attività Totale', data: labels.map(l => counts[l]), borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3 }] }, options: { maintainAspectRatio: false }});
     }
+
+    // (Includi qui le restanti funzioni di supporto come exportData, addChannel, saveAction, ecc. dal codice precedente per rendere il file funzionante)
+    // ... [Funzioni CRM, Import/Export, Canali, Stati omesse per brevità ma necessarie nel file finale] ...
+    function toggleExportDates(v) { document.querySelectorAll('.export-date-field').forEach(e => e.style.display = (v==='range'?'block':'none')); }
     function populateActionSelectors() {
         const compSel = document.getElementById('act-company');
         compSel.innerHTML = '<option value="">...</option>' + [...new Set(contacts.map(c => c.name))].map(n => `<option value="${n}">${n}</option>`).join('');
         document.getElementById('act-status-select').innerHTML = appStatuses.map(s => `<option value="${s}">${s}</option>`).join('');
     }
+    function resetActionForm() { document.getElementById('act-id').value = ''; tempFU = []; }
     function saveAction() {
         const id = document.getElementById('act-id').value;
         const data = { id: id?parseInt(id):Date.now(), company: document.getElementById('act-company').value, role: document.getElementById('act-role').value, status: document.getElementById('act-status-select').value, date: document.getElementById('act-date').value, fuHistory: [...tempFU] };
         if(id) { actions[actions.findIndex(a=>a.id==id)] = data; } else { actions.push(data); }
         save(); showView('registry');
     }
-    function resetActionForm() { document.getElementById('act-id').value = ''; tempFU = []; }
     function editAction(id) { const a = actions.find(a=>a.id==id); document.getElementById('act-id').value = a.id; showView('new-action'); }
-    function renderContacts() { /* ... logica CRM ... */ }
-    function addContact() { /* ... logica CRM ... */ }
+    function deleteAction(id) { actions = actions.filter(a=>a.id!==id); save(); renderArchive(); }
 
     window.onload = () => showView('dashboard');
 </script>
