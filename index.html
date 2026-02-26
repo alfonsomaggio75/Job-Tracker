@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Hub Pro | v5.2 (Import/Export)</title>
+    <title>Career Hub Pro | v5.3 (Dashboard Optimized)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -83,12 +83,16 @@
             <div class="stat-card"><span>FU Oggi/Scaduti</span><h2 id="stat-tasks">0</h2></div>
             <div class="stat-card"><span>Aziende</span><h2 id="stat-contacts">0</h2></div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); height: 450px;"><canvas id="impactChart"></canvas></div>
-            <div style="max-height: 450px; overflow-y: auto;">
-                <h3 style="margin-top:0">📅 Scadenze Odierne e Pendenti</h3>
-                <div id="urgent-list"></div>
-            </div>
+
+        <div class="form-card" style="margin-bottom: 20px;">
+            <h3 style="margin-top:0">📅 Scadenze Odierne e Pendenti</h3>
+            <div id="urgent-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 16px; border: 1px solid var(--border); height: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h3 style="margin-top:0">📈 Trend Candidature</h3>
+            <div style="height: 320px;"><canvas id="impactChart"></canvas></div>
         </div>
     </section>
 
@@ -122,7 +126,7 @@
 
             <div class="config-section" style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #feb2b2;">
                 <h4 style="margin-top: 0; color: #c53030;">⚠️ Importa Backup (Sovrascrittura)</h4>
-                <p style="font-size: 0.75rem; color: #742a2a; margin-bottom: 10px;">Seleziona un file JSON precedentemente esportato. I dati attuali verranno ELIMINATI e sostituiti.</p>
+                <p style="font-size: 0.75rem; color: #742a2a; margin-bottom: 10px;">Seleziona un file JSON. I dati attuali verranno ELIMINATI.</p>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="import-file" accept=".json" style="font-size: 0.8rem;">
                     <button class="btn btn-danger" onclick="importDatabase()">Importa JSON</button>
@@ -272,7 +276,7 @@
         if(viewId === 'archive') renderArchive();
     }
 
-    // --- LOGICA EXPORT / IMPORT ---
+    // --- EXPORT / IMPORT ---
     function toggleExportDates(val) {
         document.querySelectorAll('.export-date-field').forEach(el => el.style.display = (val === 'range' ? 'block' : 'none'));
     }
@@ -316,73 +320,49 @@
 
     function importDatabase() {
         const fileInput = document.getElementById('import-file');
-        if (!fileInput.files.length) return alert("Seleziona un file JSON da importare.");
-        
-        const file = fileInput.files[0];
+        if (!fileInput.files.length) return alert("Seleziona un file JSON.");
         const reader = new FileReader();
-        
         reader.onload = function(e) {
             try {
                 const importedData = JSON.parse(e.target.result);
-                if (!importedData.actions || !importedData.contacts) throw new Error("Formato file non valido");
-                
-                if (confirm("ATTENZIONE: Questa operazione cancellerà tutti i dati attuali e li sostituirà con quelli del file. Vuoi procedere?")) {
+                if (confirm("ATTENZIONE: Questa operazione sovrascrive tutto. Procedere?")) {
                     actions = importedData.actions || [];
                     contacts = importedData.contacts || [];
                     channels = importedData.channels || defaultChannels;
                     appStatuses = importedData.appStatuses || defaultStatuses;
                     save();
-                    alert("Database importato con successo! L'applicazione verrà aggiornata.");
                     location.reload();
                 }
-            } catch (err) {
-                alert("Errore durante l'importazione: il file non è un backup valido.");
-            }
+            } catch (err) { alert("File non valido."); }
         };
-        reader.readAsText(file);
+        reader.readAsText(fileInput.files[0]);
     }
 
-    // --- LOGICA CANALI ---
+    // --- CANALI & STATI ---
     function addChannel() {
         const name = document.getElementById('new-channel-name').value.trim();
         if(name && !channels.includes(name)) { channels.push(name); document.getElementById('new-channel-name').value = ''; save(); renderChannels(); }
     }
-    function deleteChannel(name) { if(confirm(`Eliminare il canale ${name}?`)) { channels = channels.filter(c => c !== name); save(); renderChannels(); } }
-    function moveChannel(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex >= 0 && newIndex < channels.length) {
-            const temp = channels[index]; channels[index] = channels[newIndex]; channels[newIndex] = temp;
-            save(); renderChannels();
-        }
-    }
+    function deleteChannel(name) { if(confirm(`Eliminare ${name}?`)) { channels = channels.filter(c => c !== name); save(); renderChannels(); } }
     function renderChannels() {
-        document.getElementById('channels-list').innerHTML = channels.map((c, i) => `<tr><td style="width: 80px;"><button class="btn btn-outline btn-small" onclick="moveChannel(${i}, -1)" ${i === 0 ? 'disabled' : ''}>▲</button><button class="btn btn-outline btn-small" onclick="moveChannel(${i}, 1)" ${i === channels.length - 1 ? 'disabled' : ''}>▼</button></td><td><strong>${c}</strong></td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteChannel('${c}')">🗑️</button></td></tr>`).join('');
+        document.getElementById('channels-list').innerHTML = channels.map((c, i) => `<tr><td>#${i+1}</td><td><strong>${c}</strong></td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteChannel('${c}')">🗑️</button></td></tr>`).join('');
     }
-
-    // --- LOGICA STATI ---
     function addStatus() {
         const name = document.getElementById('new-status-name').value.trim();
         if(name && !appStatuses.includes(name)) { appStatuses.push(name); document.getElementById('new-status-name').value = ''; save(); renderStatusesConfig(); }
     }
     function deleteStatus(name) {
-        if (["In Corso", "Archiviata", "Rigettata"].includes(name)) return alert("Stato di sistema non eliminabile.");
-        if(confirm(`Eliminare lo stato ${name}?`)) { appStatuses = appStatuses.filter(s => s !== name); save(); renderStatusesConfig(); }
-    }
-    function moveStatus(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex >= 0 && newIndex < appStatuses.length) {
-            const temp = appStatuses[index]; appStatuses[index] = appStatuses[newIndex]; appStatuses[newIndex] = temp;
-            save(); renderStatusesConfig();
-        }
+        if (["In Corso", "Archiviata", "Rigettata"].includes(name)) return alert("Base.");
+        if(confirm(`Eliminare ${name}?`)) { appStatuses = appStatuses.filter(s => s !== name); save(); renderStatusesConfig(); }
     }
     function renderStatusesConfig() {
         document.getElementById('statuses-config-list').innerHTML = appStatuses.map((s, i) => {
             const isBase = ["In Corso", "Archiviata", "Rigettata"].includes(s);
-            return `<tr><td style="width: 80px;"><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, -1)" ${i === 0 ? 'disabled' : ''}>▲</button><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, 1)" ${i === appStatuses.length - 1 ? 'disabled' : ''}>▼</button></td><td><strong>${s}</strong></td><td>${!isBase ? `<button class="btn btn-outline btn-small" style="color:red" onclick="deleteStatus('${s}')">🗑️</button>` : ''}</td></tr>`;
+            return `<tr><td>#${i+1}</td><td><strong>${s}</strong></td><td>${!isBase ? `<button class="btn btn-outline btn-small" style="color:red" onclick="deleteStatus('${s}')">🗑️</button>` : ''}</td></tr>`;
         }).join('');
     }
 
-    // --- LOGICA CRM ---
+    // --- CRM ---
     function addContact() {
         const id = document.getElementById('c-id').value;
         const name = document.getElementById('c-name').value;
@@ -391,7 +371,6 @@
         if(id) { const idx = contacts.findIndex(c => c.id == id); contacts[idx] = data; } else { contacts.push(data); }
         save(); resetCRMForm(); renderContacts();
     }
-    function deleteContact(id) { if(confirm("Eliminare?")) { contacts = contacts.filter(c => c.id !== id); save(); renderContacts(); } }
     function editContact(id) {
         const c = contacts.find(c => c.id == id);
         document.getElementById('c-id').value = c.id; document.getElementById('c-name').value = c.name; document.getElementById('c-person').value = c.person; document.getElementById('c-role-contact').value = c.role || ''; document.getElementById('c-email').value = c.email; document.getElementById('c-phone').value = c.phone; document.getElementById('c-linkedin').value = c.linkedin; document.getElementById('c-notes').value = c.notes;
@@ -401,83 +380,64 @@
     function renderContacts() {
         const s = document.getElementById('crm-search').value.toLowerCase();
         const f = contacts.filter(c => c.name.toLowerCase().includes(s) || c.person.toLowerCase().includes(s));
-        document.getElementById('contact-list').innerHTML = f.map(c => `<tr><td><strong>${c.name}</strong></td><td>${c.person}</td><td>${c.role}</td><td>${c.email}</td><td><button class="btn btn-outline btn-small" onclick="editContact(${c.id})">✏️</button> <button class="btn btn-outline btn-small" style="color:red" onclick="deleteContact(${c.id})">🗑️</button></td></tr>`).join('');
+        document.getElementById('contact-list').innerHTML = f.map(c => `<tr><td><strong>${c.name}</strong></td><td>${c.person}</td><td>${c.role}</td><td>${c.email}</td><td><button class="btn btn-outline btn-small" onclick="editContact(${c.id})">✏️</button></td></tr>`).join('');
     }
 
-    // --- LOGICA CANDIDATURE ---
+    // --- CANDIDATURE ---
     function resetActionForm() {
         document.getElementById('act-id').value = ''; document.querySelectorAll('#view-new-action input, #view-new-action textarea').forEach(i => i.value = '');
         document.getElementById('act-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('act-rating').value = "3"; populateStatusSelector();
-        document.getElementById('act-status-select').value = "In Corso";
-        tempFU = []; renderFUHistory(); document.getElementById('action-form-title').innerText = "🚀 Registra Candidatura";
+        document.getElementById('act-rating').value = "3"; populateActionSelectors();
+        tempFU = []; renderFUHistory();
     }
     function populateActionSelectors() {
         const compSel = document.getElementById('act-company');
         const unique = [...new Set(contacts.map(c => c.name))].sort();
         compSel.innerHTML = '<option value="">Seleziona...</option>' + unique.map(n => `<option value="${n}">${n}</option>`).join('');
-        const chanSel = document.getElementById('act-channel-select');
-        chanSel.innerHTML = channels.map(c => `<option value="${c}">${c}</option>`).join('');
-        populateStatusSelector();
-    }
-    function populateStatusSelector(selectedStatus = "") {
+        document.getElementById('act-channel-select').innerHTML = channels.map(c => `<option value="${c}">${c}</option>`).join('');
         const statSel = document.getElementById('act-status-select');
-        let filteredStatuses = appStatuses.filter(s => s !== "Archiviata" && s !== "Rigettata");
-        if (selectedStatus && (selectedStatus === "Archiviata" || selectedStatus === "Rigettata")) { filteredStatuses.push(selectedStatus); }
-        filteredStatuses.sort((a,b) => appStatuses.indexOf(a) - appStatuses.indexOf(b));
-        statSel.innerHTML = filteredStatuses.map(s => `<option value="${s}" ${s === selectedStatus ? 'selected':''}>${s}</option>`).join('');
+        statSel.innerHTML = appStatuses.map(s => `<option value="${s}">${s}</option>`).join('');
     }
     function updateReferentList(selectedRef = "") {
         const comp = document.getElementById('act-company').value;
-        const refSel = document.getElementById('act-referent');
         const refs = contacts.filter(c => c.name === comp).sort((a,b) => a.person.localeCompare(b.person));
-        refSel.innerHTML = refs.map(r => `<option value="${r.person}" ${r.person === selectedRef ? 'selected':''}>${r.person}</option>`).join('') || '<option value="-">-</option>';
+        document.getElementById('act-referent').innerHTML = refs.map(r => `<option value="${r.person}" ${r.person === selectedRef ? 'selected':''}>${r.person}</option>`).join('') || '<option value="-">-</option>';
     }
     function addFUToTemp() {
         const date = document.getElementById('new-fu-date').value; const desc = document.getElementById('new-fu-desc').value;
-        if(!date || !desc) return alert("Dati FU mancanti");
-        tempFU.push({ id: Date.now(), date, desc, completed: false, completedDate: null });
+        if(!date || !desc) return alert("Mancano dati");
+        tempFU.push({ id: Date.now(), date, desc, completed: false });
         document.getElementById('new-fu-date').value = ''; document.getElementById('new-fu-desc').value = ''; renderFUHistory();
     }
     function renderFUHistory() {
-        document.getElementById('fu-history-list').innerHTML = tempFU.map((fu, idx) => `<tr><td><input type="date" value="${fu.date}" onchange="updateFUDate(${idx}, this.value)" ${fu.completed ? 'disabled' : ''} style="padding:4px; font-size:0.8rem;"></td><td>${fu.desc}</td><td><input type="checkbox" ${fu.completed ? 'checked' : ''} onchange="toggleFUComplete(${idx}, this.checked)"> ${fu.completed ? 'Fatto' : 'Pend.'}</td></tr>`).join('');
+        document.getElementById('fu-history-list').innerHTML = tempFU.map((fu, idx) => `<tr><td>${fu.date}</td><td>${fu.desc}</td><td><input type="checkbox" ${fu.completed ? 'checked' : ''} onchange="tempFU[${idx}].completed = this.checked"></td></tr>`).join('');
     }
-    function updateFUDate(idx, newDate) { tempFU[idx].date = newDate; }
-    function toggleFUComplete(idx, done) { tempFU[idx].completed = done; tempFU[idx].completedDate = done ? new Date().toISOString().split('T')[0] : null; renderFUHistory(); }
-
     function saveAction() {
         const id = document.getElementById('act-id').value;
         if(!document.getElementById('act-company').value) return alert("Azienda obbligatoria");
-        const status = document.getElementById('act-status-select').value;
         const data = {
-            id: id ? parseInt(id) : (actions.length > 0 ? Math.max(...actions.map(a => a.id)) + 1 : 1),
-            company: document.getElementById('act-company').value, referent: document.getElementById('act-referent').value, role: document.getElementById('act-role').value, location: document.getElementById('act-location').value, rating: document.getElementById('act-rating').value, channel: document.getElementById('act-channel-select').value, date: document.getElementById('act-date').value, cvFile: document.getElementById('act-cv').value, clFile: document.getElementById('act-cl').value, status: status, link: document.getElementById('act-link').value, ai: document.getElementById('act-ai').value, fuHistory: [...tempFU], notes: document.getElementById('act-notes').value
+            id: id ? parseInt(id) : Date.now(),
+            company: document.getElementById('act-company').value, referent: document.getElementById('act-referent').value, role: document.getElementById('act-role').value, location: document.getElementById('act-location').value, rating: document.getElementById('act-rating').value, channel: document.getElementById('act-channel-select').value, date: document.getElementById('act-date').value, cvFile: document.getElementById('act-cv').value, clFile: document.getElementById('act-cl').value, status: document.getElementById('act-status-select').value, link: document.getElementById('act-link').value, ai: document.getElementById('act-ai').value, fuHistory: [...tempFU], notes: document.getElementById('act-notes').value
         };
         if(id) { const idx = actions.findIndex(a => a.id == id); actions[idx] = data; } else { actions.push(data); }
-        save(); resetActionForm(); (status === 'Archiviata' || status === 'Rigettata') ? showView('archive') : showView('registry');
+        save(); resetActionForm(); showView('registry');
     }
-
     function editAction(id) {
         const a = actions.find(a => a.id == id); resetActionForm();
-        document.getElementById('act-id').value = a.id; document.getElementById('action-form-title').innerText = "✏️ Modifica #" + a.id;
+        document.getElementById('act-id').value = a.id;
         showView('new-action');
         document.getElementById('act-company').value = a.company; updateReferentList(a.referent);
         document.getElementById('act-role').value = a.role; document.getElementById('act-location').value = a.location;
         document.getElementById('act-rating').value = a.rating; document.getElementById('act-channel-select').value = a.channel;
-        document.getElementById('act-date').value = a.date; document.getElementById('act-cv').value = a.cvFile; document.getElementById('act-cl').value = a.clFile;
-        populateStatusSelector(a.status); document.getElementById('act-status-select').value = a.status;
-        document.getElementById('act-link').value = a.link; document.getElementById('act-ai').value = a.ai; document.getElementById('act-notes').value = a.notes;
+        document.getElementById('act-date').value = a.date; document.getElementById('act-status-select').value = a.status;
+        document.getElementById('act-link').value = a.link; document.getElementById('act-notes').value = a.notes;
         tempFU = a.fuHistory || []; renderFUHistory();
     }
-
-    function restoreAction(id) { const a = actions.find(a => a.id === id); a.status = 'In Corso'; save(); showView('registry'); }
     function archiveAction(id) {
-        const a = actions.find(a => a.id === id); const reason = prompt("Nota archiviazione:");
-        if (reason === null) return; if (!reason.trim()) return alert("Obbligatoria.");
-        a.status = 'Archiviata'; a.notes = (a.notes ? a.notes + "\n" : "") + "[" + new Date().toLocaleDateString() + "] Archiviazione: " + reason;
-        save(); renderRegistry();
+        const a = actions.find(a => a.id === id);
+        a.status = 'Archiviata'; save(); renderRegistry();
     }
-    function deleteAction(id) { if(confirm("Eliminare definitivamente?")) { actions = actions.filter(a => a.id !== id); save(); renderRegistry(); renderArchive(); } }
+    function deleteAction(id) { if(confirm("Eliminare?")) { actions = actions.filter(a => a.id !== id); save(); renderRegistry(); renderArchive(); } }
 
     // --- DASHBOARD ---
     function renderDashboard() {
@@ -494,38 +454,33 @@
         document.getElementById('stat-tasks').innerText = urgentTasks.length;
         document.getElementById('urgent-list').innerHTML = urgentTasks.map(u => {
             const isExpired = u.fu.date < today;
-            return `<div class="urgent-item">
+            return `<div class="urgent-item" style="margin-bottom:0">
                 <span class="status-tag ${isExpired ? 'tag-expired' : 'tag-today'}">${isExpired ? 'SCADUTO' : 'OGGI'}</span>
-                <div><strong>${u.company}</strong> - ${u.role}</div>
-                <div style="font-size:0.8rem; color:#64748b; margin: 5px 0;">${u.fu.desc} (${u.fu.date})</div>
+                <div style="font-size:0.9rem"><strong>${u.company}</strong></div>
+                <div style="font-size:0.75rem; color:#64748b;">${u.fu.desc}</div>
                 <div style="display:flex; gap:5px; margin-top:10px;">
                     <button class="btn btn-primary btn-small" onclick="markFUDone(${u.actId}, ${u.fu.id})">Fatto</button>
                     <button class="btn btn-outline btn-small" onclick="editAction(${u.actId})">Apri</button>
                 </div>
             </div>`;
-        }).join('') || '<p>Nessuna scadenza.</p>';
+        }).join('') || '<p style="grid-column: 1/-1; color:#64748b; text-align:center;">Nessuna scadenza pendente.</p>';
         renderChart(actions);
     }
 
     function markFUDone(actId, fuId) {
         const a = actions.find(a => a.id === actId); const f = a.fuHistory.find(f => f.id === fuId);
-        f.completed = true; f.completedDate = new Date().toISOString().split('T')[0]; save(); renderDashboard();
+        f.completed = true; save(); renderDashboard();
     }
 
     function renderRegistry() {
         const s = document.getElementById('registry-search').value.toLowerCase();
         const f = actions.filter(a => a.status !== 'Archiviata' && a.status !== 'Rigettata').filter(a => a.company.toLowerCase().includes(s) || a.role.toLowerCase().includes(s));
-        document.getElementById('action-list').innerHTML = f.map(a => {
-            const next = (a.fuHistory || []).filter(f => !f.completed).sort((x,y) => new Date(x.date)-new Date(y.date))[0];
-            return `<tr><td>#${a.id}</td><td>${a.date}</td><td><strong>${a.company}</strong></td><td>${a.role}</td><td>${'★'.repeat(a.rating)}</td><td>${a.status}</td><td>${next ? next.date : '-'}</td>
-            <td><button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" onclick="archiveAction(${a.id})">📦</button> <button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`;
-        }).join('');
+        document.getElementById('action-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td><strong>${a.company}</strong></td><td>${a.role}</td><td>${'★'.repeat(a.rating)}</td><td>${a.status}</td><td>-</td><td><button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" onclick="archiveAction(${a.id})">📦</button></td></tr>`).join('');
     }
 
     function renderArchive() {
         const f = actions.filter(a => a.status === 'Archiviata' || a.status === 'Rigettata');
-        document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td>${a.company}</td><td>${a.role}</td><td>${a.status}</td><td style="font-size:0.75rem">${a.notes}</td>
-            <td><button class="btn btn-outline btn-small" onclick="restoreAction(${a.id})">🔄</button> <button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
+        document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td>${a.company}</td><td>${a.role}</td><td>${a.status}</td><td>${a.notes}</td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
     }
 
     function renderChart(data) {
@@ -533,7 +488,7 @@
         const counts = {}; data.forEach(a => counts[a.date] = (counts[a.date] || 0) + 1);
         const labels = Object.keys(counts).sort();
         if(myChart) myChart.destroy();
-        myChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Trend Attività', data: labels.map(l => counts[l]), borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3 }] }, options: { maintainAspectRatio: false }});
+        myChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Attività', data: labels.map(l => counts[l]), borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3 }] }, options: { maintainAspectRatio: false }});
     }
 
     window.onload = () => showView('dashboard');
