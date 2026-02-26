@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Hub Pro | v5.1 (Export Avanzato)</title>
+    <title>Career Hub Pro | v5.2 (Import/Export)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -54,7 +54,7 @@
         .tag-expired { background: #fee2e2; color: #ef4444; }
         .tag-today { background: #eff6ff; color: #2563eb; }
 
-        .export-group { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px; }
+        .config-section { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px; }
         .search-input { margin-bottom: 15px; padding: 12px; border: 2px solid var(--primary); border-radius: 8px; }
 
         @media print { .no-print { display: none !important; } .view { display: block !important; } }
@@ -94,42 +94,50 @@
 
     <section id="view-settings" class="view">
         <div class="form-card">
-            <h3>📤 Esportazione Avanzata Database</h3>
-            <p style="font-size: 0.8rem; color: #64748b;">Scegli il periodo e il formato desiderato.</p>
+            <h3>📥 Import / Export Database</h3>
+            <p style="font-size: 0.8rem; color: #64748b;">Gestisci i backup del tuo database.</p>
             
-            <div class="form-grid">
-                <div class="half">
-                    <label>Tipo Esportazione</label>
-                    <select id="export-type" onchange="toggleExportDates(this.value)">
-                        <option value="total">Totale (Senza limiti)</option>
-                        <option value="range">Incrementale (Per data)</option>
-                    </select>
+            <div class="export-section">
+                <label>Periodo Esportazione</label>
+                <div class="form-grid" style="margin-bottom: 15px;">
+                    <div class="half">
+                        <select id="export-type" onchange="toggleExportDates(this.value)">
+                            <option value="total">Totale (Senza limiti)</option>
+                            <option value="range">Incrementale (Per data)</option>
+                        </select>
+                    </div>
+                    <div class="half export-date-field" style="display:none">
+                        <input type="date" id="export-start">
+                    </div>
+                    <div class="half export-date-field" style="display:none">
+                        <input type="date" id="export-end">
+                    </div>
                 </div>
-                <div class="half export-date-field" style="display:none">
-                    <label>Da Data</label>
-                    <input type="date" id="export-start">
-                </div>
-                <div class="half export-date-field" style="display:none">
-                    <label>A Data</label>
-                    <input type="date" id="export-end">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="exportData('csv')">Esporta CSV</button>
+                    <button class="btn btn-success" onclick="exportData('xlsx')">Esporta Excel</button>
+                    <button class="btn btn-outline" onclick="exportData('json')">Download Backup JSON</button>
                 </div>
             </div>
 
-            <div class="export-group" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
-                <button class="btn btn-primary" onclick="exportData('csv')">Esporta CSV</button>
-                <button class="btn btn-success" onclick="exportData('xlsx')">Esporta Excel</button>
-                <button class="btn btn-outline" onclick="exportData('json')">Backup JSON</button>
+            <div class="config-section" style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #feb2b2;">
+                <h4 style="margin-top: 0; color: #c53030;">⚠️ Importa Backup (Sovrascrittura)</h4>
+                <p style="font-size: 0.75rem; color: #742a2a; margin-bottom: 10px;">Seleziona un file JSON precedentemente esportato. I dati attuali verranno ELIMINATI e sostituiti.</p>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="import-file" accept=".json" style="font-size: 0.8rem;">
+                    <button class="btn btn-danger" onclick="importDatabase()">Importa JSON</button>
+                </div>
             </div>
         </div>
 
         <div class="form-card" style="margin-top: 30px;">
-            <h3>⚙️ Configurazione Canali Candidatura</h3>
+            <h3>⚙️ Configurazione Canali</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="text" id="new-channel-name" placeholder="E.g. LinkedIn">
                 <button class="btn btn-success" onclick="addChannel()">Aggiungi</button>
             </div>
             <div class="table-container">
-                <table style="min-width: 100%;">
+                <table>
                     <thead><tr><th>Ordinamento</th><th>Nome Canale</th><th>Azioni</th></tr></thead>
                     <tbody id="channels-list"></tbody>
                 </table>
@@ -137,13 +145,13 @@
         </div>
 
         <div class="form-card" style="margin-top: 30px;">
-            <h3>📊 Configurazione Stati Candidatura</h3>
+            <h3>📊 Configurazione Stati</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="text" id="new-status-name" placeholder="E.g. Offerta Ricevuta">
                 <button class="btn btn-success" onclick="addStatus()">Aggiungi Stato</button>
             </div>
             <div class="table-container">
-                <table style="min-width: 100%;">
+                <table>
                     <thead><tr><th>Ordinamento</th><th>Nome Stato</th><th>Azioni</th></tr></thead>
                     <tbody id="statuses-config-list"></tbody>
                 </table>
@@ -236,6 +244,7 @@
     let channels = JSON.parse(localStorage.getItem('c_pro_channels')) || defaultChannels;
     let appStatuses = JSON.parse(localStorage.getItem('c_pro_statuses')) || defaultStatuses;
     
+    // Check stati base
     if (!appStatuses.includes("Archiviata")) appStatuses.push("Archiviata");
     if (!appStatuses.includes("Rigettata")) appStatuses.push("Rigettata");
     if (!appStatuses.includes("In Corso")) appStatuses.unshift("In Corso");
@@ -263,7 +272,7 @@
         if(viewId === 'archive') renderArchive();
     }
 
-    // --- LOGICA EXPORT ---
+    // --- LOGICA EXPORT / IMPORT ---
     function toggleExportDates(val) {
         document.querySelectorAll('.export-date-field').forEach(el => el.style.display = (val === 'range' ? 'block' : 'none'));
     }
@@ -272,36 +281,27 @@
         const type = document.getElementById('export-type').value;
         const start = document.getElementById('export-start').value;
         const end = document.getElementById('export-end').value;
-
         let dataToExport = [...actions];
-
         if (type === 'range') {
-            if (!start || !end) return alert("Per favore seleziona il periodo.");
+            if (!start || !end) return alert("Seleziona le date.");
             dataToExport = actions.filter(a => a.date >= start && a.date <= end);
         }
-
-        if (dataToExport.length === 0) return alert("Nessun dato trovato per i criteri selezionati.");
-
+        if (dataToExport.length === 0) return alert("Nessun dato trovato.");
         const timestamp = new Date().toISOString().split('T')[0];
-        let filename = `career_hub_export_${type}_${timestamp}`;
+        let filename = `career_hub_backup_${timestamp}`;
 
         if (format === 'json') {
             const fullBackup = { actions: dataToExport, contacts, channels, appStatuses };
             downloadFile(JSON.stringify(fullBackup, null, 2), `${filename}.json`, 'application/json');
-        } else if (format === 'csv' || format === 'xlsx') {
-            const headers = ["ID", "Data", "Azienda", "Referente", "Ruolo", "Sede", "Importanza", "Canale", "Stato", "CV_File", "CL_File", "Link_Annuncio", "Link_AI", "Note"];
-            const rows = dataToExport.map(a => [
-                a.id, a.date, a.company, a.referent, a.role, a.location, a.rating, a.channel, a.status, a.cvFile, a.clFile, a.link, a.ai, (a.notes || "").replace(/\n/g, " ")
-            ]);
-            
-            let content = headers.join(",") + "\n" + rows.map(r => r.map(field => `"${field || ''}"`).join(",")).join("\n");
-            
+        } else {
+            const headers = ["ID", "Data", "Azienda", "Referente", "Ruolo", "Sede", "Importanza", "Canale", "Stato", "Note"];
+            const rows = dataToExport.map(a => [a.id, a.date, a.company, a.referent, a.role, a.location, a.rating, a.channel, a.status, (a.notes || "").replace(/\n/g, " ")]);
             if (format === 'xlsx') {
-                // Semplice export XML Excel compatibile per non usare librerie pesanti
-                let excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head></head><body><table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(f => `<td>${f}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
-                downloadFile(excelTemplate, `${filename}.xls`, 'application/vnd.ms-excel');
+                let xml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Candidature</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body><table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(f => `<td>${f}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
+                downloadFile(xml, `${filename}.xls`, 'application/vnd.ms-excel');
             } else {
-                downloadFile(content, `${filename}.csv`, 'text/csv');
+                let csv = headers.join(",") + "\n" + rows.map(r => r.map(f => `"${f || ''}"`).join(",")).join("\n");
+                downloadFile(csv, `${filename}.csv`, 'text/csv');
             }
         }
     }
@@ -312,6 +312,34 @@
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
+    }
+
+    function importDatabase() {
+        const fileInput = document.getElementById('import-file');
+        if (!fileInput.files.length) return alert("Seleziona un file JSON da importare.");
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (!importedData.actions || !importedData.contacts) throw new Error("Formato file non valido");
+                
+                if (confirm("ATTENZIONE: Questa operazione cancellerà tutti i dati attuali e li sostituirà con quelli del file. Vuoi procedere?")) {
+                    actions = importedData.actions || [];
+                    contacts = importedData.contacts || [];
+                    channels = importedData.channels || defaultChannels;
+                    appStatuses = importedData.appStatuses || defaultStatuses;
+                    save();
+                    alert("Database importato con successo! L'applicazione verrà aggiornata.");
+                    location.reload();
+                }
+            } catch (err) {
+                alert("Errore durante l'importazione: il file non è un backup valido.");
+            }
+        };
+        reader.readAsText(file);
     }
 
     // --- LOGICA CANALI ---
@@ -337,7 +365,7 @@
         if(name && !appStatuses.includes(name)) { appStatuses.push(name); document.getElementById('new-status-name').value = ''; save(); renderStatusesConfig(); }
     }
     function deleteStatus(name) {
-        if (["In Corso", "Archiviata", "Rigettata"].includes(name)) return alert("Non puoi eliminare gli stati base.");
+        if (["In Corso", "Archiviata", "Rigettata"].includes(name)) return alert("Stato di sistema non eliminabile.");
         if(confirm(`Eliminare lo stato ${name}?`)) { appStatuses = appStatuses.filter(s => s !== name); save(); renderStatusesConfig(); }
     }
     function moveStatus(index, direction) {
@@ -350,7 +378,7 @@
     function renderStatusesConfig() {
         document.getElementById('statuses-config-list').innerHTML = appStatuses.map((s, i) => {
             const isBase = ["In Corso", "Archiviata", "Rigettata"].includes(s);
-            return `<tr><td style="width: 80px;"><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, -1)" ${i === 0 ? 'disabled' : ''}>▲</button><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, 1)" ${i === appStatuses.length - 1 ? 'disabled' : ''}>▼</button></td><td><strong>${s}</strong> ${isBase ? '<small style="color:#64748b">(Base)</small>':''}</td><td>${!isBase ? `<button class="btn btn-outline btn-small" style="color:red" onclick="deleteStatus('${s}')">🗑️</button>` : ''}</td></tr>`;
+            return `<tr><td style="width: 80px;"><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, -1)" ${i === 0 ? 'disabled' : ''}>▲</button><button class="btn btn-outline btn-small" onclick="moveStatus(${i}, 1)" ${i === appStatuses.length - 1 ? 'disabled' : ''}>▼</button></td><td><strong>${s}</strong></td><td>${!isBase ? `<button class="btn btn-outline btn-small" style="color:red" onclick="deleteStatus('${s}')">🗑️</button>` : ''}</td></tr>`;
         }).join('');
     }
 
@@ -363,11 +391,11 @@
         if(id) { const idx = contacts.findIndex(c => c.id == id); contacts[idx] = data; } else { contacts.push(data); }
         save(); resetCRMForm(); renderContacts();
     }
-    function deleteContact(id) { if(confirm("Eliminare dalla rubrica?")) { contacts = contacts.filter(c => c.id !== id); save(); renderContacts(); } }
+    function deleteContact(id) { if(confirm("Eliminare?")) { contacts = contacts.filter(c => c.id !== id); save(); renderContacts(); } }
     function editContact(id) {
         const c = contacts.find(c => c.id == id);
         document.getElementById('c-id').value = c.id; document.getElementById('c-name').value = c.name; document.getElementById('c-person').value = c.person; document.getElementById('c-role-contact').value = c.role || ''; document.getElementById('c-email').value = c.email; document.getElementById('c-phone').value = c.phone; document.getElementById('c-linkedin').value = c.linkedin; document.getElementById('c-notes').value = c.notes;
-        showView('address-book'); window.scrollTo(0,0);
+        showView('address-book');
     }
     function resetCRMForm() { document.getElementById('c-id').value = ''; document.querySelectorAll('#view-address-book input, #view-address-book textarea').forEach(i => i.value=''); }
     function renderContacts() {
@@ -431,8 +459,7 @@
 
     function editAction(id) {
         const a = actions.find(a => a.id == id); resetActionForm();
-        document.getElementById('act-id').value = a.id;
-        document.getElementById('action-form-title').innerText = "✏️ Modifica #" + a.id;
+        document.getElementById('act-id').value = a.id; document.getElementById('action-form-title').innerText = "✏️ Modifica #" + a.id;
         showView('new-action');
         document.getElementById('act-company').value = a.company; updateReferentList(a.referent);
         document.getElementById('act-role').value = a.role; document.getElementById('act-location').value = a.location;
@@ -445,8 +472,8 @@
 
     function restoreAction(id) { const a = actions.find(a => a.id === id); a.status = 'In Corso'; save(); showView('registry'); }
     function archiveAction(id) {
-        const a = actions.find(a => a.id === id); const reason = prompt("Nota per archiviazione:");
-        if (reason === null) return; if (!reason.trim()) return alert("Nota obbligatoria.");
+        const a = actions.find(a => a.id === id); const reason = prompt("Nota archiviazione:");
+        if (reason === null) return; if (!reason.trim()) return alert("Obbligatoria.");
         a.status = 'Archiviata'; a.notes = (a.notes ? a.notes + "\n" : "") + "[" + new Date().toLocaleDateString() + "] Archiviazione: " + reason;
         save(); renderRegistry();
     }
@@ -461,9 +488,7 @@
         let urgentTasks = [];
         actions.forEach(a => {
             if(a.status !== 'Archiviata' && a.status !== 'Rigettata') {
-                (a.fuHistory || []).forEach(f => {
-                    if(!f.completed && f.date <= today) urgentTasks.push({ actId: a.id, company: a.company, role: a.role, fu: f });
-                });
+                (a.fuHistory || []).forEach(f => { if(!f.completed && f.date <= today) urgentTasks.push({ actId: a.id, company: a.company, role: a.role, fu: f }); });
             }
         });
         document.getElementById('stat-tasks').innerText = urgentTasks.length;
@@ -475,7 +500,7 @@
                 <div style="font-size:0.8rem; color:#64748b; margin: 5px 0;">${u.fu.desc} (${u.fu.date})</div>
                 <div style="display:flex; gap:5px; margin-top:10px;">
                     <button class="btn btn-primary btn-small" onclick="markFUDone(${u.actId}, ${u.fu.id})">Fatto</button>
-                    <button class="btn btn-outline btn-small" onclick="editAction(${u.actId})">Apri Scheda</button>
+                    <button class="btn btn-outline btn-small" onclick="editAction(${u.actId})">Apri</button>
                 </div>
             </div>`;
         }).join('') || '<p>Nessuna scadenza.</p>';
@@ -500,7 +525,7 @@
     function renderArchive() {
         const f = actions.filter(a => a.status === 'Archiviata' || a.status === 'Rigettata');
         document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td>${a.company}</td><td>${a.role}</td><td>${a.status}</td><td style="font-size:0.75rem">${a.notes}</td>
-            <td><button class="btn btn-outline btn-small" onclick="restoreAction(${a.id})" title="Ripristina">🔄</button> <button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
+            <td><button class="btn btn-outline btn-small" onclick="restoreAction(${a.id})">🔄</button> <button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
     }
 
     function renderChart(data) {
