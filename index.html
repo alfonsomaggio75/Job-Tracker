@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Hub Pro | v5.4 (Dashboard Stats)</title>
+    <title>Career Hub Pro | v5.3 (Dashboard Optimized)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -26,11 +26,9 @@
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Griglia statistiche espansa per ospitare i nuovi conteggi */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { background: var(--card); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .stat-card span { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
-        .stat-card h2 { margin: 8px 0 0; color: var(--primary); font-size: 1.5rem; }
+        .stat-card h2 { margin: 8px 0 0; color: var(--primary); }
 
         .form-card { background: var(--card); padding: 2rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
@@ -80,17 +78,16 @@
     
     <section id="view-dashboard" class="view active">
         <div class="stats-grid">
-            <div class="stat-card"><span>In Corso</span><h2 id="stat-total">0</h2></div>
-            <div class="stat-card"><span>Colloqui</span><h2 id="stat-interviews">0</h2></div>
-            <div class="stat-card" style="border-left: 4px solid var(--danger);"><span>Rigettate</span><h2 id="stat-rejected">0</h2></div>
-            <div class="stat-card"><span>In Archivio</span><h2 id="stat-archived">0</h2></div>
-            <div class="stat-card"><span>FU Scaduti</span><h2 id="stat-tasks">0</h2></div>
+            <div class="stat-card"><span>Attive</span><h2 id="stat-total">0</h2></div>
+            <div class="stat-card"><span>Efficacia</span><h2 id="stat-rate">0%</h2></div>
+            <div class="stat-card"><span>FU Oggi/Scaduti</span><h2 id="stat-tasks">0</h2></div>
             <div class="stat-card"><span>Aziende</span><h2 id="stat-contacts">0</h2></div>
         </div>
 
         <div class="form-card" style="margin-bottom: 20px;">
             <h3 style="margin-top:0">📅 Scadenze Odierne e Pendenti</h3>
-            <div id="urgent-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;"></div>
+            <div id="urgent-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                </div>
         </div>
 
         <div style="background: white; padding: 20px; border-radius: 16px; border: 1px solid var(--border); height: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
@@ -102,104 +99,142 @@
     <section id="view-settings" class="view">
         <div class="form-card">
             <h3>📥 Import / Export Database</h3>
+            <p style="font-size: 0.8rem; color: #64748b;">Gestisci i backup del tuo database.</p>
+            
             <div class="export-section">
                 <label>Periodo Esportazione</label>
                 <div class="form-grid" style="margin-bottom: 15px;">
                     <div class="half">
                         <select id="export-type" onchange="toggleExportDates(this.value)">
-                            <option value="total">Totale</option>
-                            <option value="range">Per data</option>
+                            <option value="total">Totale (Senza limiti)</option>
+                            <option value="range">Incrementale (Per data)</option>
                         </select>
                     </div>
-                    <div class="half export-date-field" style="display:none"><input type="date" id="export-start"></div>
-                    <div class="half export-date-field" style="display:none"><input type="date" id="export-end"></div>
+                    <div class="half export-date-field" style="display:none">
+                        <input type="date" id="export-start">
+                    </div>
+                    <div class="half export-date-field" style="display:none">
+                        <input type="date" id="export-end">
+                    </div>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="exportData('csv')">CSV</button>
-                    <button class="btn btn-success" onclick="exportData('xlsx')">Excel</button>
-                    <button class="btn btn-outline" onclick="exportData('json')">Backup JSON</button>
+                    <button class="btn btn-primary" onclick="exportData('csv')">Esporta CSV</button>
+                    <button class="btn btn-success" onclick="exportData('xlsx')">Esporta Excel</button>
+                    <button class="btn btn-outline" onclick="exportData('json')">Download Backup JSON</button>
                 </div>
             </div>
+
             <div class="config-section" style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #feb2b2;">
-                <h4 style="margin-top: 0; color: #c53030;">⚠️ Importa Backup</h4>
+                <h4 style="margin-top: 0; color: #c53030;">⚠️ Importa Backup (Sovrascrittura)</h4>
+                <p style="font-size: 0.75rem; color: #742a2a; margin-bottom: 10px;">Seleziona un file JSON. I dati attuali verranno ELIMINATI.</p>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="import-file" accept=".json" style="font-size: 0.8rem;">
-                    <button class="btn btn-danger" onclick="importDatabase()">Importa</button>
+                    <button class="btn btn-danger" onclick="importDatabase()">Importa JSON</button>
                 </div>
             </div>
         </div>
 
         <div class="form-card" style="margin-top: 30px;">
-            <h3>⚙️ Canali</h3>
+            <h3>⚙️ Configurazione Canali</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="text" id="new-channel-name" placeholder="E.g. LinkedIn">
                 <button class="btn btn-success" onclick="addChannel()">Aggiungi</button>
             </div>
             <div class="table-container">
-                <table><thead><tr><th>#</th><th>Nome Canale</th><th>Azioni</th></tr></thead><tbody id="channels-list"></tbody></table>
+                <table>
+                    <thead><tr><th>Ordinamento</th><th>Nome Canale</th><th>Azioni</th></tr></thead>
+                    <tbody id="channels-list"></tbody>
+                </table>
             </div>
         </div>
 
         <div class="form-card" style="margin-top: 30px;">
-            <h3>📊 Stati</h3>
+            <h3>📊 Configurazione Stati</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="text" id="new-status-name" placeholder="E.g. Offerta Ricevuta">
-                <button class="btn btn-success" onclick="addStatus()">Aggiungi</button>
+                <button class="btn btn-success" onclick="addStatus()">Aggiungi Stato</button>
             </div>
             <div class="table-container">
-                <table><thead><tr><th>#</th><th>Nome Stato</th><th>Azioni</th></tr></thead><tbody id="statuses-config-list"></tbody></table>
+                <table>
+                    <thead><tr><th>Ordinamento</th><th>Nome Stato</th><th>Azioni</th></tr></thead>
+                    <tbody id="statuses-config-list"></tbody>
+                </table>
             </div>
         </div>
     </section>
 
     <section id="view-address-book" class="view">
         <div class="form-card">
-            <h3>🏢 CRM</h3>
+            <h3 id="crm-form-title">🏢 Gestione Azienda</h3>
             <input type="hidden" id="c-id">
             <div class="form-grid">
-                <input type="text" id="c-name" placeholder="Azienda *">
-                <input type="text" id="c-person" placeholder="Referente">
-                <input type="text" id="c-role-contact" placeholder="Ruolo">
+                <input type="text" id="c-name" placeholder="Nome Azienda *">
+                <input type="text" id="c-person" placeholder="Nome Referente">
+                <input type="text" id="c-role-contact" placeholder="Ruolo Referente">
                 <input type="email" id="c-email" placeholder="Email">
-                <input type="text" id="c-phone" placeholder="Tel">
-                <textarea id="c-notes" placeholder="Note..." class="full"></textarea>
+                <input type="text" id="c-phone" placeholder="Telefono">
+                <input type="text" id="c-linkedin" placeholder="LinkedIn URL" class="full">
+                <textarea id="c-notes" placeholder="Note CRM..." class="full"></textarea>
             </div>
-            <button class="btn btn-success" onclick="addContact()">Salva</button>
+            <div style="margin-top:15px; display: flex; gap: 10px;">
+                <button class="btn btn-success" onclick="addContact()">Salva</button>
+                <button class="btn btn-outline" onclick="resetCRMForm()">Annulla</button>
+            </div>
         </div>
-        <input type="text" id="crm-search" class="search-input full" placeholder="🔍 Cerca..." onkeyup="renderContacts()">
-        <div class="table-container"><table><tbody id="contact-list"></tbody></table></div>
+        <input type="text" id="crm-search" class="search-input full" placeholder="🔍 Cerca in Rubrica..." onkeyup="renderContacts()">
+        <div class="table-container"><table><thead><tr><th>Azienda</th><th>Referente</th><th>Ruolo</th><th>Contatti</th><th>Azioni</th></tr></thead><tbody id="contact-list"></tbody></table></div>
     </section>
 
     <section id="view-new-action" class="view">
         <div class="form-card">
-            <h2 id="action-form-title">🚀 Candidatura</h2>
+            <h2 id="action-form-title">🚀 Registra Candidatura</h2>
             <input type="hidden" id="act-id">
             <div class="form-grid">
                 <div class="half"><label>Azienda</label><select id="act-company" onchange="updateReferentList()"></select></div>
+                <div class="half"><label>Referente</label><select id="act-referent"></select></div>
                 <div class="half"><label>Ruolo</label><input type="text" id="act-role"></div>
-                <div class="half"><label>Stato</label><select id="act-status-select"></select></div>
+                <div class="half"><label>Sede</label><input type="text" id="act-location"></div>
+                <div class="half"><label>Importanza</label><select id="act-rating"><option value="1">⭐</option><option value="2">⭐⭐</option><option value="3" selected>⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="5">⭐⭐⭐⭐⭐</option></select></div>
+                <div class="half"><label>Canale</label><select id="act-channel-select"></select></div>
                 <div class="half"><label>Data</label><input type="date" id="act-date"></div>
-                <div class="full" style="background:#fefce8; padding:15px; border-radius:10px;">
-                    <label>Prossimo Follow-up</label>
-                    <div style="display:flex; gap:10px;">
-                        <input type="date" id="new-fu-date">
-                        <input type="text" id="new-fu-desc" placeholder="Azione...">
-                        <button class="btn btn-outline" onclick="addFUToTemp()">+</button>
+                <div class="half"><label>File CV</label><input type="text" id="act-cv"></div>
+                <div class="half"><label>File Lettera</label><input type="text" id="act-cl"></div>
+                <div class="full"><label>Stato Candidatura</label><select id="act-status-select"></select></div>
+                <div class="full"><label>Link Annuncio</label><input type="url" id="act-link"></div>
+                <div class="full"><label>Link AI</label><input type="url" id="act-ai"></div>
+                
+                <div class="full" style="background:#fefce8; padding:20px; border-radius:12px; border:1px solid #fef08a;">
+                    <h3 style="margin-top:0">📅 Follow-up Avanzato</h3>
+                    <div class="form-grid">
+                        <div class="half"><label>Data Prossimo FU</label><input type="date" id="new-fu-date"></div>
+                        <div class="full"><label>Descrizione Azione</label><input type="text" id="new-fu-desc" placeholder="Azione da fare"></div>
+                        <div class="full"><button class="btn btn-outline" style="width:100%" onclick="addFUToTemp()">Aggiungi allo storico</button></div>
                     </div>
-                    <table style="width:100%; margin-top:10px;"><tbody id="fu-history-list"></tbody></table>
+                    <div class="fu-history">
+                        <div class="table-container" style="background:white;">
+                            <table style="min-width: 100%;"><thead><tr><th>Data Prevista</th><th>Azione</th><th>Stato</th></tr></thead><tbody id="fu-history-list"></tbody></table>
+                        </div>
+                    </div>
                 </div>
+                <div class="full"><label>Note Generali</label><textarea id="act-notes"></textarea></div>
             </div>
-            <button class="btn btn-primary" onclick="saveAction()">Salva</button>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="saveAction()">Salva Record</button>
+                <button class="btn btn-outline" onclick="showView('registry')">Annulla</button>
+            </div>
         </div>
     </section>
 
     <section id="view-registry" class="view">
-        <input type="text" id="registry-search" class="search-input full" placeholder="🔍 Cerca..." onkeyup="renderRegistry()">
-        <div class="table-container"><table><thead><tr><th>ID</th><th>Azienda</th><th>Ruolo</th><th>Stato</th><th>FU</th><th>Azioni</th></tr></thead><tbody id="action-list"></tbody></table></div>
+        <input type="text" id="registry-search" class="search-input full" placeholder="🔍 Ricerca globale..." onkeyup="renderRegistry()">
+        <div class="table-container"><table><thead><tr><th>ID</th><th>Data</th><th>Azienda</th><th>Ruolo</th><th>Imp.</th><th>Stato</th><th>Prossimo FU</th><th>Azioni</th></tr></thead><tbody id="action-list"></tbody></table></div>
     </section>
 
     <section id="view-archive" class="view">
-        <div class="table-container"><table><thead><tr><th>ID</th><th>Azienda</th><th>Stato</th><th>Note</th><th>Azioni</th></tr></thead><tbody id="archive-list"></tbody></table></div>
+        <div class="table-container">
+            <table><thead><tr><th>ID</th><th>Data</th><th>Azienda</th><th>Ruolo</th><th>Stato</th><th>Note</th><th>Azioni</th></tr></thead>
+            <tbody id="archive-list"></tbody></table>
+        </div>
     </section>
 
 </div>
@@ -213,6 +248,11 @@
     let channels = JSON.parse(localStorage.getItem('c_pro_channels')) || defaultChannels;
     let appStatuses = JSON.parse(localStorage.getItem('c_pro_statuses')) || defaultStatuses;
     
+    // Check stati base
+    if (!appStatuses.includes("Archiviata")) appStatuses.push("Archiviata");
+    if (!appStatuses.includes("Rigettata")) appStatuses.push("Rigettata");
+    if (!appStatuses.includes("In Corso")) appStatuses.unshift("In Corso");
+
     let tempFU = [];
     let myChart = null;
 
@@ -236,20 +276,174 @@
         if(viewId === 'archive') renderArchive();
     }
 
-    // --- DASHBOARD AGGIORNATA ---
+    // --- EXPORT / IMPORT ---
+    function toggleExportDates(val) {
+        document.querySelectorAll('.export-date-field').forEach(el => el.style.display = (val === 'range' ? 'block' : 'none'));
+    }
+
+    function exportData(format) {
+        const type = document.getElementById('export-type').value;
+        const start = document.getElementById('export-start').value;
+        const end = document.getElementById('export-end').value;
+        let dataToExport = [...actions];
+        if (type === 'range') {
+            if (!start || !end) return alert("Seleziona le date.");
+            dataToExport = actions.filter(a => a.date >= start && a.date <= end);
+        }
+        if (dataToExport.length === 0) return alert("Nessun dato trovato.");
+        const timestamp = new Date().toISOString().split('T')[0];
+        let filename = `career_hub_backup_${timestamp}`;
+
+        if (format === 'json') {
+            const fullBackup = { actions: dataToExport, contacts, channels, appStatuses };
+            downloadFile(JSON.stringify(fullBackup, null, 2), `${filename}.json`, 'application/json');
+        } else {
+            const headers = ["ID", "Data", "Azienda", "Referente", "Ruolo", "Sede", "Importanza", "Canale", "Stato", "Note"];
+            const rows = dataToExport.map(a => [a.id, a.date, a.company, a.referent, a.role, a.location, a.rating, a.channel, a.status, (a.notes || "").replace(/\n/g, " ")]);
+            if (format === 'xlsx') {
+                let xml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Candidature</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body><table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(f => `<td>${f}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
+                downloadFile(xml, `${filename}.xls`, 'application/vnd.ms-excel');
+            } else {
+                let csv = headers.join(",") + "\n" + rows.map(r => r.map(f => `"${f || ''}"`).join(",")).join("\n");
+                downloadFile(csv, `${filename}.csv`, 'text/csv');
+            }
+        }
+    }
+
+    function downloadFile(content, filename, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importDatabase() {
+        const fileInput = document.getElementById('import-file');
+        if (!fileInput.files.length) return alert("Seleziona un file JSON.");
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (confirm("ATTENZIONE: Questa operazione sovrascrive tutto. Procedere?")) {
+                    actions = importedData.actions || [];
+                    contacts = importedData.contacts || [];
+                    channels = importedData.channels || defaultChannels;
+                    appStatuses = importedData.appStatuses || defaultStatuses;
+                    save();
+                    location.reload();
+                }
+            } catch (err) { alert("File non valido."); }
+        };
+        reader.readAsText(fileInput.files[0]);
+    }
+
+    // --- CANALI & STATI ---
+    function addChannel() {
+        const name = document.getElementById('new-channel-name').value.trim();
+        if(name && !channels.includes(name)) { channels.push(name); document.getElementById('new-channel-name').value = ''; save(); renderChannels(); }
+    }
+    function deleteChannel(name) { if(confirm(`Eliminare ${name}?`)) { channels = channels.filter(c => c !== name); save(); renderChannels(); } }
+    function renderChannels() {
+        document.getElementById('channels-list').innerHTML = channels.map((c, i) => `<tr><td>#${i+1}</td><td><strong>${c}</strong></td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteChannel('${c}')">🗑️</button></td></tr>`).join('');
+    }
+    function addStatus() {
+        const name = document.getElementById('new-status-name').value.trim();
+        if(name && !appStatuses.includes(name)) { appStatuses.push(name); document.getElementById('new-status-name').value = ''; save(); renderStatusesConfig(); }
+    }
+    function deleteStatus(name) {
+        if (["In Corso", "Archiviata", "Rigettata"].includes(name)) return alert("Base.");
+        if(confirm(`Eliminare ${name}?`)) { appStatuses = appStatuses.filter(s => s !== name); save(); renderStatusesConfig(); }
+    }
+    function renderStatusesConfig() {
+        document.getElementById('statuses-config-list').innerHTML = appStatuses.map((s, i) => {
+            const isBase = ["In Corso", "Archiviata", "Rigettata"].includes(s);
+            return `<tr><td>#${i+1}</td><td><strong>${s}</strong></td><td>${!isBase ? `<button class="btn btn-outline btn-small" style="color:red" onclick="deleteStatus('${s}')">🗑️</button>` : ''}</td></tr>`;
+        }).join('');
+    }
+
+    // --- CRM ---
+    function addContact() {
+        const id = document.getElementById('c-id').value;
+        const name = document.getElementById('c-name').value;
+        if(!name) return alert("Azienda obbligatoria");
+        const data = { id: id ? parseInt(id) : Date.now(), name, person: document.getElementById('c-person').value, role: document.getElementById('c-role-contact').value, email: document.getElementById('c-email').value, phone: document.getElementById('c-phone').value, linkedin: document.getElementById('c-linkedin').value, notes: document.getElementById('c-notes').value };
+        if(id) { const idx = contacts.findIndex(c => c.id == id); contacts[idx] = data; } else { contacts.push(data); }
+        save(); resetCRMForm(); renderContacts();
+    }
+    function editContact(id) {
+        const c = contacts.find(c => c.id == id);
+        document.getElementById('c-id').value = c.id; document.getElementById('c-name').value = c.name; document.getElementById('c-person').value = c.person; document.getElementById('c-role-contact').value = c.role || ''; document.getElementById('c-email').value = c.email; document.getElementById('c-phone').value = c.phone; document.getElementById('c-linkedin').value = c.linkedin; document.getElementById('c-notes').value = c.notes;
+        showView('address-book');
+    }
+    function resetCRMForm() { document.getElementById('c-id').value = ''; document.querySelectorAll('#view-address-book input, #view-address-book textarea').forEach(i => i.value=''); }
+    function renderContacts() {
+        const s = document.getElementById('crm-search').value.toLowerCase();
+        const f = contacts.filter(c => c.name.toLowerCase().includes(s) || c.person.toLowerCase().includes(s));
+        document.getElementById('contact-list').innerHTML = f.map(c => `<tr><td><strong>${c.name}</strong></td><td>${c.person}</td><td>${c.role}</td><td>${c.email}</td><td><button class="btn btn-outline btn-small" onclick="editContact(${c.id})">✏️</button></td></tr>`).join('');
+    }
+
+    // --- CANDIDATURE ---
+    function resetActionForm() {
+        document.getElementById('act-id').value = ''; document.querySelectorAll('#view-new-action input, #view-new-action textarea').forEach(i => i.value = '');
+        document.getElementById('act-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('act-rating').value = "3"; populateActionSelectors();
+        tempFU = []; renderFUHistory();
+    }
+    function populateActionSelectors() {
+        const compSel = document.getElementById('act-company');
+        const unique = [...new Set(contacts.map(c => c.name))].sort();
+        compSel.innerHTML = '<option value="">Seleziona...</option>' + unique.map(n => `<option value="${n}">${n}</option>`).join('');
+        document.getElementById('act-channel-select').innerHTML = channels.map(c => `<option value="${c}">${c}</option>`).join('');
+        const statSel = document.getElementById('act-status-select');
+        statSel.innerHTML = appStatuses.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+    function updateReferentList(selectedRef = "") {
+        const comp = document.getElementById('act-company').value;
+        const refs = contacts.filter(c => c.name === comp).sort((a,b) => a.person.localeCompare(b.person));
+        document.getElementById('act-referent').innerHTML = refs.map(r => `<option value="${r.person}" ${r.person === selectedRef ? 'selected':''}>${r.person}</option>`).join('') || '<option value="-">-</option>';
+    }
+    function addFUToTemp() {
+        const date = document.getElementById('new-fu-date').value; const desc = document.getElementById('new-fu-desc').value;
+        if(!date || !desc) return alert("Mancano dati");
+        tempFU.push({ id: Date.now(), date, desc, completed: false });
+        document.getElementById('new-fu-date').value = ''; document.getElementById('new-fu-desc').value = ''; renderFUHistory();
+    }
+    function renderFUHistory() {
+        document.getElementById('fu-history-list').innerHTML = tempFU.map((fu, idx) => `<tr><td>${fu.date}</td><td>${fu.desc}</td><td><input type="checkbox" ${fu.completed ? 'checked' : ''} onchange="tempFU[${idx}].completed = this.checked"></td></tr>`).join('');
+    }
+    function saveAction() {
+        const id = document.getElementById('act-id').value;
+        if(!document.getElementById('act-company').value) return alert("Azienda obbligatoria");
+        const data = {
+            id: id ? parseInt(id) : Date.now(),
+            company: document.getElementById('act-company').value, referent: document.getElementById('act-referent').value, role: document.getElementById('act-role').value, location: document.getElementById('act-location').value, rating: document.getElementById('act-rating').value, channel: document.getElementById('act-channel-select').value, date: document.getElementById('act-date').value, cvFile: document.getElementById('act-cv').value, clFile: document.getElementById('act-cl').value, status: document.getElementById('act-status-select').value, link: document.getElementById('act-link').value, ai: document.getElementById('act-ai').value, fuHistory: [...tempFU], notes: document.getElementById('act-notes').value
+        };
+        if(id) { const idx = actions.findIndex(a => a.id == id); actions[idx] = data; } else { actions.push(data); }
+        save(); resetActionForm(); showView('registry');
+    }
+    function editAction(id) {
+        const a = actions.find(a => a.id == id); resetActionForm();
+        document.getElementById('act-id').value = a.id;
+        showView('new-action');
+        document.getElementById('act-company').value = a.company; updateReferentList(a.referent);
+        document.getElementById('act-role').value = a.role; document.getElementById('act-location').value = a.location;
+        document.getElementById('act-rating').value = a.rating; document.getElementById('act-channel-select').value = a.channel;
+        document.getElementById('act-date').value = a.date; document.getElementById('act-status-select').value = a.status;
+        document.getElementById('act-link').value = a.link; document.getElementById('act-notes').value = a.notes;
+        tempFU = a.fuHistory || []; renderFUHistory();
+    }
+    function archiveAction(id) {
+        const a = actions.find(a => a.id === id);
+        a.status = 'Archiviata'; save(); renderRegistry();
+    }
+    function deleteAction(id) { if(confirm("Eliminare?")) { actions = actions.filter(a => a.id !== id); save(); renderRegistry(); renderArchive(); } }
+
+    // --- DASHBOARD ---
     function renderDashboard() {
-        // Filtri per statistiche
-        const inProgress = actions.filter(a => a.status === 'In Corso');
-        const interviews = actions.filter(a => a.status === 'Colloquio');
-        const rejected = actions.filter(a => a.status === 'Rigettata');
-        const archived = actions.filter(a => a.status === 'Archiviata');
-
-        document.getElementById('stat-total').innerText = inProgress.length;
-        document.getElementById('stat-interviews').innerText = interviews.length;
-        document.getElementById('stat-rejected').innerText = rejected.length;
-        document.getElementById('stat-archived').innerText = archived.length;
+        const active = actions.filter(a => a.status !== 'Archiviata' && a.status !== 'Rigettata');
+        document.getElementById('stat-total').innerText = active.length;
         document.getElementById('stat-contacts').innerText = contacts.length;
-
         const today = new Date().toISOString().split('T')[0];
         let urgentTasks = [];
         actions.forEach(a => {
@@ -258,10 +452,9 @@
             }
         });
         document.getElementById('stat-tasks').innerText = urgentTasks.length;
-        
         document.getElementById('urgent-list').innerHTML = urgentTasks.map(u => {
             const isExpired = u.fu.date < today;
-            return `<div class="urgent-item">
+            return `<div class="urgent-item" style="margin-bottom:0">
                 <span class="status-tag ${isExpired ? 'tag-expired' : 'tag-today'}">${isExpired ? 'SCADUTO' : 'OGGI'}</span>
                 <div style="font-size:0.9rem"><strong>${u.company}</strong></div>
                 <div style="font-size:0.75rem; color:#64748b;">${u.fu.desc}</div>
@@ -270,12 +463,10 @@
                     <button class="btn btn-outline btn-small" onclick="editAction(${u.actId})">Apri</button>
                 </div>
             </div>`;
-        }).join('') || '<p style="grid-column: 1/-1; color:#64748b; text-align:center;">Nessuna scadenza.</p>';
-        
+        }).join('') || '<p style="grid-column: 1/-1; color:#64748b; text-align:center;">Nessuna scadenza pendente.</p>';
         renderChart(actions);
     }
 
-    // --- ALTRE FUNZIONI (EXPORT, CRM, ECC) ---
     function markFUDone(actId, fuId) {
         const a = actions.find(a => a.id === actId); const f = a.fuHistory.find(f => f.id === fuId);
         f.completed = true; save(); renderDashboard();
@@ -283,13 +474,13 @@
 
     function renderRegistry() {
         const s = document.getElementById('registry-search').value.toLowerCase();
-        const f = actions.filter(a => a.status !== 'Archiviata' && a.status !== 'Rigettata').filter(a => a.company.toLowerCase().includes(s));
-        document.getElementById('action-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td><strong>${a.company}</strong></td><td>${a.role}</td><td>${a.status}</td><td>-</td><td><button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button></td></tr>`).join('');
+        const f = actions.filter(a => a.status !== 'Archiviata' && a.status !== 'Rigettata').filter(a => a.company.toLowerCase().includes(s) || a.role.toLowerCase().includes(s));
+        document.getElementById('action-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td><strong>${a.company}</strong></td><td>${a.role}</td><td>${'★'.repeat(a.rating)}</td><td>${a.status}</td><td>-</td><td><button class="btn btn-outline btn-small" onclick="editAction(${a.id})">✏️</button> <button class="btn btn-outline btn-small" onclick="archiveAction(${a.id})">📦</button></td></tr>`).join('');
     }
 
     function renderArchive() {
         const f = actions.filter(a => a.status === 'Archiviata' || a.status === 'Rigettata');
-        document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.company}</td><td>${a.status}</td><td>${a.notes || ''}</td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
+        document.getElementById('archive-list').innerHTML = f.map(a => `<tr><td>#${a.id}</td><td>${a.date}</td><td>${a.company}</td><td>${a.role}</td><td>${a.status}</td><td>${a.notes}</td><td><button class="btn btn-outline btn-small" style="color:red" onclick="deleteAction(${a.id})">🗑️</button></td></tr>`).join('');
     }
 
     function renderChart(data) {
@@ -297,26 +488,8 @@
         const counts = {}; data.forEach(a => counts[a.date] = (counts[a.date] || 0) + 1);
         const labels = Object.keys(counts).sort();
         if(myChart) myChart.destroy();
-        myChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Attività Totale', data: labels.map(l => counts[l]), borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3 }] }, options: { maintainAspectRatio: false }});
+        myChart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Attività', data: labels.map(l => counts[l]), borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3 }] }, options: { maintainAspectRatio: false }});
     }
-
-    // (Includi qui le restanti funzioni di supporto come exportData, addChannel, saveAction, ecc. dal codice precedente per rendere il file funzionante)
-    // ... [Funzioni CRM, Import/Export, Canali, Stati omesse per brevità ma necessarie nel file finale] ...
-    function toggleExportDates(v) { document.querySelectorAll('.export-date-field').forEach(e => e.style.display = (v==='range'?'block':'none')); }
-    function populateActionSelectors() {
-        const compSel = document.getElementById('act-company');
-        compSel.innerHTML = '<option value="">...</option>' + [...new Set(contacts.map(c => c.name))].map(n => `<option value="${n}">${n}</option>`).join('');
-        document.getElementById('act-status-select').innerHTML = appStatuses.map(s => `<option value="${s}">${s}</option>`).join('');
-    }
-    function resetActionForm() { document.getElementById('act-id').value = ''; tempFU = []; }
-    function saveAction() {
-        const id = document.getElementById('act-id').value;
-        const data = { id: id?parseInt(id):Date.now(), company: document.getElementById('act-company').value, role: document.getElementById('act-role').value, status: document.getElementById('act-status-select').value, date: document.getElementById('act-date').value, fuHistory: [...tempFU] };
-        if(id) { actions[actions.findIndex(a=>a.id==id)] = data; } else { actions.push(data); }
-        save(); showView('registry');
-    }
-    function editAction(id) { const a = actions.find(a=>a.id==id); document.getElementById('act-id').value = a.id; showView('new-action'); }
-    function deleteAction(id) { actions = actions.filter(a=>a.id!==id); save(); renderArchive(); }
 
     window.onload = () => showView('dashboard');
 </script>
