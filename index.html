@@ -93,7 +93,7 @@
 
         /* --- STILI LETTURA E CONFIGURAZIONE --- */
         #text-display, #practice-display {
-            font-size: 24px;
+            font-size: 24px; 
             line-height: 1.8;
             padding: 20px;
             border: 1px dashed #ccc;
@@ -111,20 +111,16 @@
         .voice-name { flex-grow: 1; font-size: 15px; }
         .voice-actions { display: flex; align-items: center; gap: 15px; }
 
-        /* --- NUOVI STILI PER LA PRONUNCIA E I TENTATIVI --- */
+        /* --- NUOVI STILI PER LA PRONUNCIA --- */
         .word-active {
-            background-color: #ffeb3b; /* Giallo: parola da leggere ORA */
+            background-color: #ffeb3b; 
             border-bottom: 3px solid #ff9800;
             border-radius: 3px;
+            padding-bottom: 2px;
         }
-        .word-retry {
-            background-color: #f8d7da; /* Rosso chiaro per indicare errore ma con altri tentativi */
-            border-bottom: 3px solid #dc3545;
-            border-radius: 3px;
-        }
-        .word-correct { color: #28a745; font-weight: 600; } /* Verde */
-        .word-almost { color: #fd7e14; font-weight: 600; } /* Arancione */
-        .word-wrong { color: #dc3545; font-weight: 600; text-decoration: underline; } /* Rosso fissa */
+        .word-correct { color: #28a745; font-weight: 600; } 
+        .word-almost { color: #fd7e14; font-weight: 600; } 
+        .word-wrong { color: #dc3545; font-weight: 600; text-decoration: underline; } 
         
         #practice-results {
             background: #fff3cd;
@@ -139,6 +135,29 @@
             border-radius: 20px; padding: 5px 15px;
         }
         .error-btn:hover { background-color: #f8f9fa; }
+
+        /* Stile per l'animazione di caricamento (Bluetooth Fix) */
+        #loading-evaluation {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+            color: #555;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px; height: 30px;
+            border: 4px solid #ccc;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
@@ -179,7 +198,7 @@
 
         <div id="practice-view" class="view-section">
             <h2>Pratica al Microfono</h2>
-            <p>Leggi la parola evidenziata. Hai 3 tentativi per azzeccarla, altrimenti l'app te la pronuncerà.</p>
+            <p>Leggi la parola gialla. Se è rossa, hai 3 tentativi per correggerla prima di passare oltre.</p>
             
             <div class="controls">
                 <button id="btn-practice" class="flex-btn success" onclick="togglePractice()">🎙️ Inizia Pratica</button>
@@ -187,9 +206,13 @@
 
             <div id="practice-display">Il testo apparirà qui quando inizi...</div>
 
+            <div id="loading-evaluation">
+                <div class="spinner"></div> Valutazione e ripristino audio in corso...
+            </div>
+
             <div id="practice-results">
                 <h3>Resoconto Errori</h3>
-                <p>Clicca sulle parole che hai sbagliato per riascoltarne la pronuncia perfetta.</p>
+                <p>Clicca sulle parole per riascoltarne la pronuncia.</p>
                 <div id="error-list"></div>
             </div>
         </div>
@@ -206,6 +229,7 @@
         const speedValue = document.getElementById('speed-value');
         let availableVoices = []; 
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
+        let isSystemSpeaking = false; // NUOVA VARIABILE: Evita che il mic ascolti la voce del PC
         
         // --- FUNZIONI COMUNI ---
         function switchTab(tabId, btnElement) {
@@ -215,12 +239,12 @@
             btnElement.classList.add('active');
             
             window.speechSynthesis.cancel();
-            if (isPracticing) stopPractice(); 
+            if (isPracticing) forceStopPractice(); // Ferma il microfono
         }
 
         speedInput.addEventListener('input', function() { speedValue.textContent = this.value + 'x'; });
 
-        // --- GESTIONE VOCI (CONFIGURAZIONE) ---
+        // --- GESTIONE VOCI ---
         function loadAndRenderVoices() {
             availableVoices = window.speechSynthesis.getVoices();
             const englishVoices = availableVoices.filter(v => v.lang.includes('en'));
@@ -232,7 +256,8 @@
             englishVoices.forEach((voice) => {
                 const voiceDiv = document.createElement('div');
                 voiceDiv.className = 'voice-item';
-                const nameSpan = document.createElement('voice-name');
+                
+                const nameSpan = document.createElement('span');
                 nameSpan.className = 'voice-name';
                 nameSpan.textContent = `${voice.name} (${voice.lang})`;
 
@@ -298,7 +323,7 @@
             speechSynthesis.onvoiceschanged = loadAndRenderVoices;
         }
 
-        // Funzione per pronunciare una parola (risolve problema Bluetooth disattivando prima sintesi)
+        // --- FUNZIONE PER PRONUNCIARE UNA PAROLA (Aggiornata per non farla ascoltare al mic) ---
         function speakSingleWord(word) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(word);
@@ -307,10 +332,15 @@
                 if (chosenVoice) utterance.voice = chosenVoice;
             }
             utterance.lang = 'en-US';
+            
+            // Blocchiamo il riconoscimento mentre il computer parla
+            utterance.onstart = () => { isSystemSpeaking = true; };
+            utterance.onend = () => { isSystemSpeaking = false; };
+            
             window.speechSynthesis.speak(utterance);
         }
 
-        // --- SEZIONE 1: LOGICA LETTURA ---
+        // --- SEZIONE 1: LOGICA LETTURA (Invariata) ---
         let readWordsArray = [];
         let readGlobalIndex = 0; 
         let readIsPaused = false;
@@ -381,18 +411,18 @@
             readFromIndex(readGlobalIndex);
         }
 
+
         // --- SEZIONE 2: LOGICA PRATICA PRONUNCIA ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let isPracticing = false;
-        let isTTSPlaying = false; // Ferma l'analisi se l'app sta parlando
         
-        let practiceExpectedRaw = [];
-        let practiceExpectedClean = [];
-        let currentTargetIndex = 0;
-        let lastTranscriptLength = 0;
-        let sessionResults = [];
-        let currentWordRetries = 0; // Contatore dei 3 tentativi
+        let practiceExpectedRaw = [];   
+        let practiceExpectedClean = []; 
+        let currentTargetIndex = 0;     
+        let currentWordRetries = 0; // NUOVO: Tiene traccia dei tentativi (max 3)
+        let lastTranscriptLength = 0;   
+        let sessionResults = [];        
 
         function getSimilarity(a, b) {
             if(a.length === 0 || b.length === 0) return 0;
@@ -420,7 +450,7 @@
 
         function initRecognition() {
             if (!SpeechRecognition) {
-                alert("Il browser non supporta il microfono. Usa Chrome o Edge.");
+                alert("Il tuo browser non supporta il microfono per questa app.");
                 return false;
             }
             recognition = new SpeechRecognition();
@@ -428,11 +458,9 @@
             recognition.interimResults = true;
             recognition.lang = 'en-US';
 
-            // Quando il microfono riparte (dopo la voce dell'app), azzeriamo il conteggio parole lette
-            recognition.onstart = () => { lastTranscriptLength = 0; };
-
             recognition.onresult = (event) => {
-                if (isTTSPlaying) return; // Se l'app sta suggerendo la parola, ignora il microfono
+                // Se il computer sta parlando (lettura errore), ignoriamo il microfono!
+                if (isSystemSpeaking) return;
 
                 let fullTranscript = "";
                 for (let i = 0; i < event.results.length; ++i) {
@@ -449,34 +477,11 @@
             };
 
             recognition.onend = () => {
-                // Riavvia automaticamente solo se stiamo ancora praticando e l'app NON sta parlando
-                if (isPracticing && !isTTSPlaying) {
-                    try { recognition.start(); } catch(e){}
-                }
-            };
-            return true;
-        }
-
-        // Funzione per far parlare l'app e mettere in pausa il microfono (Evita echi)
-        function speakWordAndResume(word) {
-            if (recognition) recognition.stop();
-            isTTSPlaying = true;
-            
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(word);
-            if (favoriteVoices.length > 0) {
-                const chosenVoice = availableVoices.find(v => v.name === favoriteVoices[0]);
-                if (chosenVoice) utterance.voice = chosenVoice;
-            }
-            utterance.lang = 'en-US';
-            
-            utterance.onend = () => {
-                isTTSPlaying = false;
                 if (isPracticing) {
                     try { recognition.start(); } catch(e){}
                 }
             };
-            window.speechSynthesis.speak(utterance);
+            return true;
         }
 
         function processNewWords(newWords) {
@@ -487,67 +492,70 @@
                 let originalWord = practiceExpectedRaw[currentTargetIndex];
                 let evalResult = evaluatePronunciation(spokenWord, expectedWord);
 
-                // Look-ahead: controlla se ha indovinato la parola successiva (salto accidentale)
-                if (evalResult === 'wrong' && currentTargetIndex + 1 < practiceExpectedClean.length) {
+                // Look-ahead: attivato SOLO se siamo al primo tentativo (evita salti dovuti al rumore)
+                if (evalResult === 'wrong' && currentWordRetries === 0 && currentTargetIndex + 1 < practiceExpectedClean.length) {
                     let nextExpected = practiceExpectedClean[currentTargetIndex + 1];
                     let nextEval = evaluatePronunciation(spokenWord, nextExpected);
                     if (nextEval === 'correct' || nextEval === 'almost') {
-                        // Ha saltato. Segna l'attuale come rossa e passa alla successiva.
-                        document.getElementById('p-word-' + currentTargetIndex).className = 'word-wrong';
+                        const currentSpan = document.getElementById('p-word-' + currentTargetIndex);
+                        currentSpan.className = 'word-wrong';
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: 'wrong' });
-                        currentTargetIndex++;
-                        currentWordRetries = 0;
                         
+                        currentTargetIndex++;
                         expectedWord = nextExpected;
                         originalWord = practiceExpectedRaw[currentTargetIndex];
                         evalResult = nextEval;
+                        currentWordRetries = 0;
                     }
                 }
 
+                const targetSpan = document.getElementById('p-word-' + currentTargetIndex);
+
                 if (evalResult === 'correct' || evalResult === 'almost') {
-                    // Parola corretta o migliorabile
-                    document.getElementById('p-word-' + currentTargetIndex).className = `word-${evalResult}`;
-                    sessionResults.push({ original: originalWord, clean: expectedWord, status: evalResult });
+                    // Parola azzeccata (al primo colpo o dopo riprova)
+                    targetSpan.className = `word-${evalResult}`;
+                    
+                    // Salviamo il risultato solo se non era già stata registrata come errore grave
+                    if (currentWordRetries === 0) {
+                        sessionResults.push({ original: originalWord, clean: expectedWord, status: evalResult });
+                    }
                     
                     currentTargetIndex++;
-                    currentWordRetries = 0; // Resetta i tentativi
-                    
-                    if (currentTargetIndex < practiceExpectedClean.length) {
-                        document.getElementById('p-word-' + currentTargetIndex).className = 'word-active';
-                    } else {
-                        stopPractice();
-                    }
+                    currentWordRetries = 0; // Resetta tentativi
+
                 } else {
-                    // Parola Errata o Rumore di fondo
+                    // Parola sbagliata o rumore di fondo
                     currentWordRetries++;
-                    
-                    if (currentWordRetries < 3) {
-                        // Meno di 3 tentativi: si colora di rosso chiaro ma resta attiva
-                        document.getElementById('p-word-' + currentTargetIndex).className = 'word-retry';
-                    } else {
-                        // 3 tentativi falliti: diventa rossa fissa, si salva l'errore e si va avanti
-                        document.getElementById('p-word-' + currentTargetIndex).className = 'word-wrong';
+                    targetSpan.className = 'word-wrong word-active'; // Diventa rossa MA rimane attiva (sottolineata)
+
+                    if (currentWordRetries >= 3) {
+                        // Terzo tentativo fallito!
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: 'wrong' });
+                        targetSpan.className = 'word-wrong'; // Togli sottolineatura attiva
                         
-                        let wordToSpeak = expectedWord; // Salviamo la parola da far pronunciare all'app
+                        // Pronuncia automatica (il mic viene ignorato grazie a isSystemSpeaking)
+                        speakSingleWord(originalWord); 
                         
                         currentTargetIndex++;
                         currentWordRetries = 0;
-                        
-                        if (currentTargetIndex < practiceExpectedClean.length) {
-                            document.getElementById('p-word-' + currentTargetIndex).className = 'word-active';
-                            speakWordAndResume(wordToSpeak); // L'app ti suggerisce la pronuncia
-                        } else {
-                            speakWordAndResume(wordToSpeak); // Suggerisce l'ultima parola
-                            stopPractice();
-                        }
+                    } else {
+                        // Aspettiamo un altro tentativo (interrompe il foreach per non avanzare il cursore)
+                        return; 
                     }
+                }
+
+                // Aggiorna l'evidenziazione della parola successiva
+                document.querySelectorAll('.word-active').forEach(el => el.classList.remove('word-active'));
+                if (currentTargetIndex < practiceExpectedClean.length) {
+                    document.getElementById('p-word-' + currentTargetIndex).classList.add('word-active');
+                } else {
+                    initiateStopSequence(); // Fine del testo
                 }
             });
         }
 
         function togglePractice() {
-            if (isPracticing) stopPractice();
+            if (isPracticing) initiateStopSequence();
             else startPractice();
         }
 
@@ -563,10 +571,9 @@
             practiceExpectedRaw = text.split(/\s+/);
             practiceExpectedClean = practiceExpectedRaw.map(w => w.toLowerCase().replace(/[^\w]/g, ''));
             currentTargetIndex = 0;
-            lastTranscriptLength = 0;
             currentWordRetries = 0;
+            lastTranscriptLength = 0;
             sessionResults = [];
-            isTTSPlaying = false;
 
             const pArea = document.getElementById('practice-display');
             pArea.innerHTML = '';
@@ -582,30 +589,50 @@
             }
 
             document.getElementById('practice-results').style.display = 'none';
+            document.getElementById('loading-evaluation').style.display = 'none';
 
             try {
                 recognition.start();
                 isPracticing = true;
                 const btn = document.getElementById('btn-practice');
-                btn.innerText = '⏹️ Termina / Stop Pratica';
+                btn.innerText = '⏹️ Termina Pratica';
                 btn.classList.remove('success');
                 btn.classList.add('secondary');
             } catch (e) { console.error(e); }
         }
 
-        function stopPractice() {
+        // Avvia la procedura di stop con l'attesa per il Bluetooth
+        function initiateStopSequence() {
+            if (recognition) recognition.stop();
             isPracticing = false;
-            // Questo stop forzato aiuta a sganciare prima il profilo Bluetooth Hands-Free
-            if (recognition) {
-                try { recognition.stop(); } catch(e){}
-            }
             
             const btn = document.getElementById('btn-practice');
             btn.innerText = '🎙️ Riavvia Pratica';
             btn.classList.remove('secondary');
             btn.classList.add('success');
 
-            elaborateResults();
+            // Mostriamo l'animazione di caricamento
+            document.getElementById('loading-evaluation').style.display = 'block';
+            document.getElementById('practice-results').style.display = 'none';
+
+            // Attendiamo 5 secondi per permettere al Bluetooth di ricollegarsi ad alta qualità
+            setTimeout(() => {
+                document.getElementById('loading-evaluation').style.display = 'none';
+                elaborateResults();
+            }, 5000);
+        }
+
+        // Arresto forzato senza delay (usato se l'utente cambia scheda)
+        function forceStopPractice() {
+            if (recognition) recognition.stop();
+            isPracticing = false;
+            const btn = document.getElementById('btn-practice');
+            if(btn) {
+                btn.innerText = '🎙️ Inizia Pratica';
+                btn.classList.remove('secondary');
+                btn.classList.add('success');
+            }
+            document.getElementById('loading-evaluation').style.display = 'none';
         }
 
         // --- SALVATAGGIO E MOSTRA RISULTATI ---
