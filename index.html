@@ -5,461 +5,328 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Tutor</title>
     <style>
-        /* Stili di base */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        /* Nuovi stili per le schede (Tabs) */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-        }
-
-        .tab-btn {
-            background-color: transparent;
-            color: #555;
-            border: none;
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 5px;
-        }
-
-        .tab-btn.active {
-            background-color: #007bff;
-            color: white;
-        }
-
-        /* Nasconde le sezioni non attive */
-        .view-section {
-            display: none;
-        }
-
-        .view-section.active {
-            display: block;
-        }
-
-        /* Stili per la lista delle voci nella configurazione */
-        .voice-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            gap: 10px;
-        }
-
-        .voice-item:last-child {
-            border-bottom: none;
-        }
-
-        .voice-name {
-            flex-grow: 1;
-            font-size: 15px;
-        }
-
-        .voice-actions {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        /* Stili elementi esistenti */
-        textarea {
-            width: 100%;
-            height: 100px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            background-color: #fff;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            text-align: center;
-        }
-
-        button.flex-btn {
-            flex-grow: 1;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        button.secondary {
-            background-color: #6c757d;
-        }
-
-        button.secondary:hover {
-            background-color: #5a6268;
-        }
+        /* --- STILI DI BASE --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
         
-        button.play-test {
-            background-color: #28a745;
-            padding: 5px 10px;
-            font-size: 12px;
-        }
+        textarea { width: 100%; height: 100px; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        select { width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
+        
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; text-align: center; }
+        button.flex-btn { flex-grow: 1; }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #5a6268; }
+        button.success { background-color: #28a745; font-weight: bold; }
+        
+        /* --- SCHEDE (TABS) --- */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { background-color: transparent; color: #555; border: none; padding: 10px 15px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background-color: #007bff; color: white; border-radius: 5px; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
 
-        #text-display {
-            font-size: 22px;
-            line-height: 1.6;
-            padding: 20px;
-            border: 1px dashed #ccc;
-            border-radius: 5px;
-            background: #fafafa;
-            min-height: 100px;
-        }
+        /* --- DISPLAY DEL TESTO --- */
+        .text-display { font-size: 24px; line-height: 1.8; padding: 20px; border: 1px dashed #ccc; border-radius: 5px; background: #fafafa; min-height: 100px; margin-bottom: 20px; }
+        
+        /* Colori Feedback Pronuncia */
+        .highlight-current { background-color: #ffeb3b; border-radius: 3px; border-bottom: 3px solid #000; padding-bottom: 2px;}
+        .word-green { color: #28a745; font-weight: bold; }
+        .word-orange { color: #ff9800; font-weight: bold; }
+        .word-red { color: #dc3545; font-weight: bold; text-decoration: underline; }
 
-        .highlight {
-            background-color: #ffeb3b;
-            border-radius: 3px;
-            transition: background-color 0.2s;
-        }
-
+        /* --- STORICO E CONFIGURAZIONE --- */
+        .voice-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .history-card { border: 1px solid #eee; padding: 15px; margin-top: 15px; border-radius: 5px; background-color: #fff9e6; }
+        .clickable-word { display: inline-block; margin: 5px; padding: 5px 10px; border-radius: 20px; cursor: pointer; color: white; font-weight: bold; }
+        .clickable-word.red { background-color: #dc3545; }
+        .clickable-word.orange { background-color: #ff9800; }
+        
         @media (max-width: 600px) {
-            body { padding: 10px; }
-            .controls { flex-direction: column; align-items: stretch; }
+            .tabs { flex-direction: column; }
             .voice-item { flex-direction: column; align-items: flex-start; }
-            .voice-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <h2>Testo di Studio</h2>
+        <textarea id="main-text" placeholder="Incolla qui il tuo testo in inglese...">This is an example. Hello world, I am testing my english pronunciation.</textarea>
+        
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('reading-view', this)">1. Lettura</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">⚙️ Configurazione Voci</button>
+            <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia 🎤</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">⚙️ Configurazione</button>
         </div>
 
         <div id="reading-view" class="view-section active">
-            <h2>Ascolta e Leggi</h2>
-            <textarea id="text-input" placeholder="Incolla qui il tuo testo in inglese...">This is an example text. We are building a great application to practice English pronunciation.</textarea>
-            
-            <label for="voice-select">Scegli tra le tue voci preferite:</label>
-            <select id="voice-select">
-                <option value="">Caricamento in corso o nessuna voce preferita...</option>
-            </select>
-
-            <div class="controls">
-                <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
-                    <label for="speed">Velocità:</label>
-                    <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" style="flex-grow: 1;">
-                    <span id="speed-value" style="min-width: 30px;">1x</span>
-                </div>
-                
-                <button class="flex-btn" onclick="startOrRestartReading()">Avvia / Riavvia</button>
-                <button id="btn-pause" class="flex-btn secondary" onclick="togglePause()">Pausa</button>
-                <button class="flex-btn secondary" onclick="skipWords(-10)">⏪ -5 sec</button>
-                <button class="flex-btn secondary" onclick="skipWords(10)">+5 sec ⏩</button>
+            <label for="voice-select">Voce di lettura:</label>
+            <select id="voice-select"><option value="">Caricamento...</option></select>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="flex-btn" onclick="startReading()">Avvia Lettura</button>
+                <button class="flex-btn secondary" onclick="window.speechSynthesis.cancel()">Stop</button>
             </div>
+            <div id="read-display" class="text-display">Il testo apparirà qui...</div>
+        </div>
 
-            <div id="text-display">Il testo apparirà qui...</div>
+        <div id="practice-view" class="view-section">
+            <p>Premi <b>"Inizia Pratica"</b> e leggi il testo a voce alta. La parola evidenziata in giallo è quella che l'app sta ascoltando.</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button id="btn-start-practice" class="success" onclick="startPractice()">🎤 Inizia Pratica</button>
+                <button class="secondary" onclick="stopPractice()">Stop</button>
+            </div>
+            <div id="practice-display" class="text-display">Il testo apparirà qui...</div>
+            
+            <div id="practice-history" style="display: none;" class="history-card">
+                <h3>📊 Risultati della Sessione</h3>
+                <p>Clicca sulle parole per ascoltare la pronuncia corretta.</p>
+                <div id="history-words-container"></div>
+            </div>
         </div>
 
         <div id="config-view" class="view-section">
-            <h2>Seleziona le tue voci preferite</h2>
-            <p>Ascolta le voci disponibili sul tuo dispositivo e spunta quelle che preferisci usare.</p>
-            <div id="voices-list">
-                </div>
+            <p>Seleziona le tue voci inglesi preferite.</p>
+            <div id="voices-list"></div>
         </div>
-
     </div>
 
     <script>
-        // --- VARIABILI GLOBALI ---
-        const speedInput = document.getElementById('speed');
-        const speedValue = document.getElementById('speed-value');
-        const btnPause = document.getElementById('btn-pause');
-        const displayArea = document.getElementById('text-display');
-        const voiceSelect = document.getElementById('voice-select');
-        const voicesListDiv = document.getElementById('voices-list');
-        
-        let wordsArray = [];
-        let globalWordIndex = 0; 
-        let isPaused = false;
+        // --- INIZIALIZZAZIONE DATI ---
+        const mainTextInput = document.getElementById('main-text');
         let availableVoices = []; 
-        
-        // Recuperiamo le voci preferite salvate nella memoria del browser (localStorage)
-        // Se non ci sono salvataggi, creiamo un array vuoto []
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
+        // Database locale per salvare gli errori (Storico)
+        let wordDatabase = JSON.parse(localStorage.getItem('wordDatabase')) || {};
 
-        // --- GESTIONE SCHEDE (TABS) ---
+        // Gestione Schede
         function switchTab(tabId, btnElement) {
-            // Nascondi tutte le sezioni
-            document.querySelectorAll('.view-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            // Togli l'evidenziazione da tutti i pulsanti delle schede
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            // Mostra la sezione cliccata e accendi il pulsante
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
-
-            // Fermiamo eventuali letture in corso se cambiamo scheda
             window.speechSynthesis.cancel();
+            stopPractice();
         }
 
-        speedInput.addEventListener('input', function() {
-            speedValue.textContent = this.value + 'x';
-        });
-
-        // --- GESTIONE VOCI E CONFIGURAZIONE ---
-        function loadAndRenderVoices() {
-            availableVoices = window.speechSynthesis.getVoices();
-            const englishVoices = availableVoices.filter(voice => voice.lang.includes('en'));
+        // --- GESTIONE VOCI (Semplificata dal codice precedente) ---
+        function loadVoices() {
+            availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('en'));
+            const voiceSelect = document.getElementById('voice-select');
+            const voicesListDiv = document.getElementById('voices-list');
             
-            // 1. Aggiorna la pagina di Configurazione
             voicesListDiv.innerHTML = '';
-            
-            if (englishVoices.length === 0) {
-                voicesListDiv.innerHTML = '<p>Nessuna voce inglese trovata.</p>';
-                return;
-            }
-
-            englishVoices.forEach((voice) => {
-                const voiceDiv = document.createElement('div');
-                voiceDiv.className = 'voice-item';
-                
-                // Creiamo il nome
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'voice-name';
-                nameSpan.textContent = `${voice.name} (${voice.lang})`;
-
-                // Creiamo i controlli (Pulsante Ascolta + Checkbox)
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'voice-actions';
-
-                const playBtn = document.createElement('button');
-                playBtn.className = 'play-test';
-                playBtn.textContent = '▶️ Ascolta';
-                playBtn.onclick = () => testVoice(voice.name);
-
-                const checkboxLabel = document.createElement('label');
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                // Se la voce è nell'array dei preferiti, metti la spunta
-                if (favoriteVoices.includes(voice.name)) {
-                    checkbox.checked = true;
-                }
-                
-                // Cosa succede quando spunto/tolgo la spunta
-                checkbox.onchange = (e) => handleCheckboxChange(voice.name, e.target.checked);
-
-                checkboxLabel.appendChild(checkbox);
-                checkboxLabel.appendChild(document.createTextNode(' Preferita'));
-
-                actionsDiv.appendChild(playBtn);
-                actionsDiv.appendChild(checkboxLabel);
-
-                voiceDiv.appendChild(nameSpan);
-                voiceDiv.appendChild(actionsDiv);
-                voicesListDiv.appendChild(voiceDiv);
-            });
-
-            // 2. Aggiorna il Menu a Tendina nella pagina Lettura
-            updateDropdown();
-        }
-
-        // Funzione per aggiornare l'array dei preferiti e salvare
-        function handleCheckboxChange(voiceName, isChecked) {
-            if (isChecked) {
-                // Aggiungiamo ai preferiti
-                if (!favoriteVoices.includes(voiceName)) {
-                    favoriteVoices.push(voiceName);
-                }
-            } else {
-                // Rimuoviamo dai preferiti
-                favoriteVoices = favoriteVoices.filter(name => name !== voiceName);
-            }
-            
-            // Salviamo nel localStorage
-            localStorage.setItem('myFavVoices', JSON.stringify(favoriteVoices));
-            
-            // Aggiorniamo subito il menu a tendina
-            updateDropdown();
-        }
-
-        // Funzione per far parlare una voce per prova
-        function testVoice(voiceName) {
-            window.speechSynthesis.cancel(); // Ferma altre voci
-            const voice = availableVoices.find(v => v.name === voiceName);
-            if (voice) {
-                const utterance = new SpeechSynthesisUtterance("Hi there, how do I sound?");
-                utterance.voice = voice;
-                utterance.lang = voice.lang;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        // Funzione per aggiornare il menu a tendina
-        function updateDropdown() {
             voiceSelect.innerHTML = '';
-            
-            if (favoriteVoices.length === 0) {
-                const option = document.createElement('option');
-                option.textContent = "Vai in 'Configurazione Voci' e seleziona le tue preferite.";
-                voiceSelect.appendChild(option);
-                return;
-            }
 
-            // Aggiungiamo solo le voci preferite al menu
-            favoriteVoices.forEach(voiceName => {
-                const option = document.createElement('option');
-                option.textContent = voiceName;
-                option.setAttribute('data-name', voiceName);
-                voiceSelect.appendChild(option);
+            availableVoices.forEach(voice => {
+                // Genera HTML Configurazione
+                const div = document.createElement('div');
+                div.className = 'voice-item';
+                const isChecked = favoriteVoices.includes(voice.name) ? 'checked' : '';
+                div.innerHTML = `
+                    <span>${voice.name}</span>
+                    <div>
+                        <button onclick="testVoice('${voice.name}')" style="padding: 5px; font-size: 12px;">▶️</button>
+                        <input type="checkbox" onchange="toggleFavorite('${voice.name}', this.checked)" ${isChecked}> Preferita
+                    </div>
+                `;
+                voicesListDiv.appendChild(div);
+
+                // Genera Menu a tendina
+                if(favoriteVoices.includes(voice.name)) {
+                    const opt = document.createElement('option');
+                    opt.value = voice.name;
+                    opt.textContent = voice.name;
+                    voiceSelect.appendChild(opt);
+                }
             });
+            if(voiceSelect.options.length === 0) voiceSelect.innerHTML = '<option value="">Nessuna voce preferita selezionata</option>';
         }
 
-        // Ascoltatore eventi per il caricamento delle voci dal browser
-        loadAndRenderVoices();
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = loadAndRenderVoices;
+        function toggleFavorite(name, isChecked) {
+            if(isChecked && !favoriteVoices.includes(name)) favoriteVoices.push(name);
+            else favoriteVoices = favoriteVoices.filter(n => n !== name);
+            localStorage.setItem('myFavVoices', JSON.stringify(favoriteVoices));
+            loadVoices();
         }
 
-
-        // --- FUNZIONI DI LETTURA (Invariate dalla versione precedente) ---
-        function startOrRestartReading() {
-            const text = document.getElementById('text-input').value;
-            if (!text.trim()) return alert("Inserisci un testo!");
-
-            if(favoriteVoices.length === 0) {
-                alert("Attenzione: non hai selezionato nessuna voce preferita. Vai nella scheda Configurazione!");
-                return;
+        function testVoice(name) {
+            const voice = availableVoices.find(v => v.name === name);
+            if(voice) {
+                const u = new SpeechSynthesisUtterance("Testing voice.");
+                u.voice = voice;
+                window.speechSynthesis.speak(u);
             }
+        }
 
-            window.speechSynthesis.cancel();
-            wordsArray = text.split(/\s+/);
-            displayArea.innerHTML = '';
+        if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = loadVoices;
+
+        // --- LETTURA (Punto 1 Semplificato) ---
+        function startReading() {
+            const text = mainTextInput.value.trim();
+            if(!text) return;
+            const u = new SpeechSynthesisUtterance(text);
+            const selectedVoice = document.getElementById('voice-select').value;
+            const voice = availableVoices.find(v => v.name === selectedVoice);
+            if(voice) u.voice = voice;
+            document.getElementById('read-display').innerText = text; // Versione semplice senza highlight per brevità
+            window.speechSynthesis.speak(u);
+        }
+
+        // --- PRATICA PRONUNCIA E RICONOSCIMENTO VOCALE (IL NUOVO PUNTO 2) ---
+        let practiceWords = [];
+        let practiceIndex = 0;
+        let recognition;
+        let isPracticing = false;
+
+        // Inizializza l'API del microfono
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; // Continua ad ascoltare
+            recognition.interimResults = true; // Restituisce i risultati in tempo reale
+            recognition.lang = 'en-US';
+        }
+
+        function startPractice() {
+            if(!recognition) return alert("Il tuo browser non supporta il microfono. Usa Google Chrome o Edge.");
+            const text = mainTextInput.value.trim();
+            if(!text) return alert("Inserisci un testo prima!");
+
+            // Prepariamo l'area testo
+            practiceWords = text.split(/\s+/);
+            practiceIndex = 0;
+            const display = document.getElementById('practice-display');
+            display.innerHTML = '';
             
-            wordsArray.forEach((word, index) => {
+            practiceWords.forEach((word, i) => {
                 const span = document.createElement('span');
-                span.id = 'word-' + index;
+                span.id = 'p-word-' + i;
                 span.innerText = word + ' ';
-                displayArea.appendChild(span);
+                display.appendChild(span);
             });
 
-            isPaused = false;
-            btnPause.innerText = "Pausa";
-            globalWordIndex = 0;
-            
-            readFromIndex(0);
-        }
+            document.getElementById('practice-history').style.display = 'none';
+            highlightCurrentPracticeWord();
 
-        function readFromIndex(startIndex) {
-            window.speechSynthesis.cancel();
+            isPracticing = true;
+            document.getElementById('btn-start-practice').innerText = "🔴 Ascolto in corso...";
+            recognition.start();
 
-            const remainingWords = wordsArray.slice(startIndex);
-            if (remainingWords.length === 0) return;
+            // COSA SUCCEDE MENTRE PARLI:
+            recognition.onresult = function(event) {
+                if(!isPracticing) return;
 
-            const textToSpeak = remainingWords.join(' ');
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            
-            if (voiceSelect.selectedOptions.length > 0) {
-                const selectedVoiceName = voiceSelect.selectedOptions[0].getAttribute('data-name');
-                const chosenVoice = availableVoices.find(voice => voice.name === selectedVoiceName);
-                if (chosenVoice) {
-                    utterance.voice = chosenVoice;
-                }
-            }
+                // Prendi l'ultima frase pronunciata
+                const currentTranscript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                const spokenWords = currentTranscript.split(/\s+/);
 
-            utterance.lang = 'en-US';
-            utterance.rate = parseFloat(speedInput.value);
-
-            let localIndexCount = 0;
-
-            utterance.onboundary = function(event) {
-                if (event.name === 'word') {
-                    document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
-                    globalWordIndex = startIndex + localIndexCount;
-                    const currentSpan = document.getElementById('word-' + globalWordIndex);
-                    if (currentSpan) {
-                        currentSpan.classList.add('highlight');
+                // Controlliamo ogni parola detta contro la parola che stiamo aspettando
+                for (let spokenWord of spokenWords) {
+                    if (practiceIndex >= practiceWords.length) {
+                        finishPractice(); // Hai finito il testo!
+                        return;
                     }
-                    localIndexCount++;
+
+                    const targetWordObj = document.getElementById('p-word-' + practiceIndex);
+                    // Puliamo la parola originale da virgole e punti per un confronto equo
+                    const targetWordClean = practiceWords[practiceIndex].toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const spokenClean = spokenWord.replace(/[^a-z0-9]/g, '');
+
+                    if (!spokenClean) continue;
+
+                    // Calcolo Similarità
+                    const simScore = calculateSimilarity(targetWordClean, spokenClean);
+
+                    targetWordObj.classList.remove('highlight-current');
+
+                    if (simScore >= 0.8) {
+                        targetWordObj.classList.add('word-green');
+                    } else if (simScore >= 0.5) {
+                        targetWordObj.classList.add('word-orange');
+                        saveToDatabase(targetWordClean, 'orange');
+                    } else {
+                        targetWordObj.classList.add('word-red');
+                        saveToDatabase(targetWordClean, 'red');
+                    }
+
+                    // Passa alla parola successiva
+                    practiceIndex++;
+                    highlightCurrentPracticeWord();
                 }
             };
 
-            utterance.onend = function() {
-                document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+            recognition.onerror = function(event) {
+                console.error("Errore microfono: ", event.error);
             };
-
-            window.speechSynthesis.speak(utterance);
         }
 
-        function togglePause() {
-            if (window.speechSynthesis.speaking) {
-                if (isPaused) {
-                    window.speechSynthesis.resume();
-                    isPaused = false;
-                    btnPause.innerText = "Pausa";
-                } else {
-                    window.speechSynthesis.pause();
-                    isPaused = true;
-                    btnPause.innerText = "Riprendi";
-                }
+        function highlightCurrentPracticeWord() {
+            if(practiceIndex < practiceWords.length) {
+                const nextWord = document.getElementById('p-word-' + practiceIndex);
+                if(nextWord) nextWord.classList.add('highlight-current');
             }
         }
 
-        function skipWords(offset) {
-            if (wordsArray.length === 0) return;
-            isPaused = false;
-            btnPause.innerText = "Pausa";
-            let newIndex = globalWordIndex + offset;
-            if (newIndex < 0) newIndex = 0;
-            if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
-            globalWordIndex = newIndex;
-            readFromIndex(globalWordIndex);
+        function stopPractice() {
+            isPracticing = false;
+            if(recognition) recognition.stop();
+            document.getElementById('btn-start-practice').innerText = "🎤 Inizia Pratica";
+        }
+
+        function finishPractice() {
+            stopPractice();
+            alert("Ottimo lavoro! Hai completato il testo.");
+            showHistorySummary();
+        }
+
+        // --- MATEMATICA E DATABASE ---
+
+        // Funzione per capire quanto due parole sono simili (0 = diverse, 1 = identiche)
+        function calculateSimilarity(s1, s2) {
+            if (s1 === s2) return 1;
+            if (s1.includes(s2) || s2.includes(s1)) return 0.6; // Se una contiene l'altra
+            return 0; // Per semplicità in questo prototipo, se non sono simili, diamo errore.
+        }
+
+        // Salva l'errore nel database (localStorage)
+        function saveToDatabase(word, color) {
+            if(!word) return;
+            if(!wordDatabase[word]) {
+                wordDatabase[word] = { redCount: 0, orangeCount: 0 };
+            }
+            if(color === 'red') wordDatabase[word].redCount++;
+            if(color === 'orange') wordDatabase[word].orangeCount++;
+            
+            localStorage.setItem('wordDatabase', JSON.stringify(wordDatabase));
+        }
+
+        // Mostra le parole difficili a fine sessione
+        function showHistorySummary() {
+            const container = document.getElementById('history-words-container');
+            container.innerHTML = '';
+            document.getElementById('practice-history').style.display = 'block';
+
+            // Scorri tutte le parole salvate nel database
+            for (let word in wordDatabase) {
+                const data = wordDatabase[word];
+                if (data.redCount > 0 || data.orangeCount > 0) {
+                    const span = document.createElement('span');
+                    // Decidiamo il colore principale in base a quale errore è più frequente
+                    const mainColor = data.redCount >= data.orangeCount ? 'red' : 'orange';
+                    span.className = `clickable-word ${mainColor}`;
+                    span.innerText = `${word} (Err: ${data.redCount}, Miglior: ${data.orangeCount})`;
+                    
+                    // Al click, pronuncia la parola correttamente
+                    span.onclick = () => {
+                        const u = new SpeechSynthesisUtterance(word);
+                        u.lang = 'en-US';
+                        window.speechSynthesis.speak(u);
+                    };
+                    
+                    container.appendChild(span);
+                }
+            }
         }
     </script>
 </body>
