@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Tutor</title>
     <style>
-        /* Stili di base */
+        /* Stili di base e Responsive (invariati) */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
@@ -13,7 +13,7 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            box-sizing: border-box; /* Aiuta a mantenere il layout nei margini */
+            box-sizing: border-box;
         }
 
         .container {
@@ -32,15 +32,25 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
-            box-sizing: border-box; /* Evita che la textarea esca dal contenitore su mobile */
+            box-sizing: border-box;
         }
 
-        /* Contenitore dei controlli flessibile */
+        /* Selettore della voce */
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background-color: #fff;
+        }
+
         .controls {
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap; /* Permette agli elementi di andare a capo su schermi piccoli */
+            flex-wrap: wrap;
             margin-bottom: 20px;
         }
 
@@ -52,7 +62,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
-            flex-grow: 1; /* Su mobile i pulsanti si allargheranno per riempire lo spazio */
+            flex-grow: 1;
             text-align: center;
         }
 
@@ -84,13 +94,12 @@
             transition: background-color 0.2s;
         }
 
-        /* REGOLA RESPONSIVE PER SMARTPHONE */
         @media (max-width: 600px) {
             body {
                 padding: 10px;
             }
             .controls {
-                flex-direction: column; /* Mette i controlli in colonna su schermi piccoli */
+                flex-direction: column;
                 align-items: stretch;
             }
         }
@@ -100,8 +109,13 @@
 
     <div class="container">
         <h2>1. Ascolta e Leggi</h2>
-        <textarea id="text-input" placeholder="Incolla qui il tuo testo in inglese...">This is an example text. We are building a great application to practice English pronunciation. This app will be responsive and very easy to use on mobile phones!</textarea>
+        <textarea id="text-input" placeholder="Incolla qui il tuo testo in inglese...">This is an example text. We are building a great application to practice English pronunciation. Check out the different voices available in your browser!</textarea>
         
+        <label for="voice-select">Scegli una voce professionale:</label>
+        <select id="voice-select">
+            <option value="">Caricamento voci in corso...</option>
+        </select>
+
         <div class="controls">
             <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
                 <label for="speed">Velocità:</label>
@@ -120,129 +134,153 @@
 
     <script>
         const speedInput = document.getElementById('speed');
-const speedValue = document.getElementById('speed-value');
-const btnPause = document.getElementById('btn-pause');
-const displayArea = document.getElementById('text-display');
+        const speedValue = document.getElementById('speed-value');
+        const btnPause = document.getElementById('btn-pause');
+        const displayArea = document.getElementById('text-display');
+        const voiceSelect = document.getElementById('voice-select');
+        
+        let wordsArray = [];
+        let globalWordIndex = 0; 
+        let isPaused = false;
+        let availableVoices = []; // Conterrà l'elenco delle voci
 
-let wordsArray = [];
-let globalWordIndex = 0; 
-let isPaused = false;
-let bestEnglishVoice = null; // Variabile per salvare la voce migliore
+        // Aggiorna etichetta velocità
+        speedInput.addEventListener('input', function() {
+            speedValue.textContent = this.value + 'x';
+        });
 
-// 1. NOVITÀ: Funzione per caricare e trovare la voce migliore
-function loadVoices() {
-    const voices = window.speechSynthesis.getVoices();
-    
-    // Cerchiamo una voce inglese. Diamo priorità a quelle di Google o quelle Premium/Online
-    bestEnglishVoice = voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Google')) ||
-                       voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Premium')) ||
-                       voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Online')) ||
-                       voices.find(voice => voice.lang.includes('en-US')); // Se non trova le prime, prende la prima inglese disponibile
-                       
-    console.log("Voce selezionata:", bestEnglishVoice ? bestEnglishVoice.name : "Nessuna voce trovata");
-}
-
-// I browser caricano le voci in modo asincrono, dobbiamo aspettare che siano pronte
-window.speechSynthesis.onvoiceschanged = loadVoices;
-
-speedInput.addEventListener('input', function() {
-    speedValue.textContent = this.value + 'x';
-});
-
-function startOrRestartReading() {
-    const text = document.getElementById('text-input').value;
-    if (!text.trim()) return alert("Inserisci un testo!");
-
-    // Assicuriamoci di avere le voci caricate (utile se clicchi subito)
-    if (!bestEnglishVoice) loadVoices();
-
-    window.speechSynthesis.cancel();
-    
-    wordsArray = text.split(/\s+/);
-    displayArea.innerHTML = '';
-    
-    wordsArray.forEach((word, index) => {
-        const span = document.createElement('span');
-        span.id = 'word-' + index;
-        span.innerText = word + ' ';
-        displayArea.appendChild(span);
-    });
-
-    isPaused = false;
-    btnPause.innerText = "Pausa";
-    globalWordIndex = 0;
-    
-    readFromIndex(0);
-}
-
-function readFromIndex(startIndex) {
-    window.speechSynthesis.cancel();
-
-    const remainingWords = wordsArray.slice(startIndex);
-    if (remainingWords.length === 0) return;
-
-    const textToSpeak = remainingWords.join(' ');
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    
-    // 2. NOVITÀ: Assegniamo la voce migliore che abbiamo trovato!
-    if (bestEnglishVoice) {
-        utterance.voice = bestEnglishVoice;
-    } else {
-        utterance.lang = 'en-US'; // Fallback di sicurezza
-    }
-    
-    utterance.rate = parseFloat(speedInput.value);
-
-    let localIndexCount = 0;
-
-    utterance.onboundary = function(event) {
-        if (event.name === 'word') {
-            document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
-            globalWordIndex = startIndex + localIndexCount;
-            const currentSpan = document.getElementById('word-' + globalWordIndex);
-            if (currentSpan) {
-                currentSpan.classList.add('highlight');
+        // FUNZIONE NUOVA: Carica le voci disponibili nel browser
+        function populateVoiceList() {
+            availableVoices = window.speechSynthesis.getVoices();
+            
+            // Filtriamo solo le voci in inglese (en-US, en-GB, ecc.)
+            const englishVoices = availableVoices.filter(voice => voice.lang.includes('en'));
+            
+            voiceSelect.innerHTML = ''; // Svuota il menu a tendina
+            
+            if (englishVoices.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = "Nessuna voce inglese trovata nel sistema.";
+                voiceSelect.appendChild(option);
+                return;
             }
-            localIndexCount++;
+
+            // Aggiungiamo le voci al menu a tendina
+            englishVoices.forEach((voice) => {
+                const option = document.createElement('option');
+                // Mostriamo il nome della voce. Spesso le voci migliori hanno "Google" o "Online" nel nome.
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-name', voice.name);
+                voiceSelect.appendChild(option);
+            });
         }
-    };
 
-    utterance.onend = function() {
-        document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
-    };
+        // I browser caricano le voci in modo asincrono, dobbiamo assicurarci di catturarle quando sono pronte
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
 
-    window.speechSynthesis.speak(utterance);
-}
+        // Avvio Lettura
+        function startOrRestartReading() {
+            const text = document.getElementById('text-input').value;
+            if (!text.trim()) return alert("Inserisci un testo!");
 
-function togglePause() {
-    if (window.speechSynthesis.speaking) {
-        if (isPaused) {
-            window.speechSynthesis.resume();
+            window.speechSynthesis.cancel();
+            
+            wordsArray = text.split(/\s+/);
+            displayArea.innerHTML = '';
+            
+            wordsArray.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.id = 'word-' + index;
+                span.innerText = word + ' ';
+                displayArea.appendChild(span);
+            });
+
             isPaused = false;
             btnPause.innerText = "Pausa";
-        } else {
-            window.speechSynthesis.pause();
-            isPaused = true;
-            btnPause.innerText = "Riprendi";
+            globalWordIndex = 0;
+            
+            readFromIndex(0);
         }
-    }
-}
 
-function skipWords(offset) {
-    if (wordsArray.length === 0) return;
+        // Lettura dall'indice
+        function readFromIndex(startIndex) {
+            window.speechSynthesis.cancel();
 
-    isPaused = false;
-    btnPause.innerText = "Pausa";
-    
-    let newIndex = globalWordIndex + offset;
-    
-    if (newIndex < 0) newIndex = 0;
-    if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
-    
-    globalWordIndex = newIndex;
-    readFromIndex(globalWordIndex);
-}
+            const remainingWords = wordsArray.slice(startIndex);
+            if (remainingWords.length === 0) return;
 
+            const textToSpeak = remainingWords.join(' ');
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            
+            // ASSEGNAZIONE DELLA VOCE SCELTA:
+            // Troviamo la voce selezionata nel menu a tendina e la applichiamo all'utterance
+            if (voiceSelect.selectedOptions.length > 0) {
+                const selectedVoiceName = voiceSelect.selectedOptions[0].getAttribute('data-name');
+                const chosenVoice = availableVoices.find(voice => voice.name === selectedVoiceName);
+                if (chosenVoice) {
+                    utterance.voice = chosenVoice;
+                }
+            }
+
+            utterance.lang = 'en-US'; // Fallback
+            utterance.rate = parseFloat(speedInput.value);
+
+            let localIndexCount = 0;
+
+            utterance.onboundary = function(event) {
+                if (event.name === 'word') {
+                    document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+
+                    globalWordIndex = startIndex + localIndexCount;
+                    
+                    const currentSpan = document.getElementById('word-' + globalWordIndex);
+                    if (currentSpan) {
+                        currentSpan.classList.add('highlight');
+                    }
+                    localIndexCount++;
+                }
+            };
+
+            utterance.onend = function() {
+                document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Pausa
+        function togglePause() {
+            if (window.speechSynthesis.speaking) {
+                if (isPaused) {
+                    window.speechSynthesis.resume();
+                    isPaused = false;
+                    btnPause.innerText = "Pausa";
+                } else {
+                    window.speechSynthesis.pause();
+                    isPaused = true;
+                    btnPause.innerText = "Riprendi";
+                }
+            }
+        }
+
+        // Salto Temporale
+        function skipWords(offset) {
+            if (wordsArray.length === 0) return;
+
+            isPaused = false;
+            btnPause.innerText = "Pausa";
+            
+            let newIndex = globalWordIndex + offset;
+            
+            if (newIndex < 0) newIndex = 0;
+            if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
+            
+            globalWordIndex = newIndex;
+            readFromIndex(globalWordIndex);
+        }
     </script>
 </body>
 </html>
