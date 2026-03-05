@@ -120,117 +120,129 @@
 
     <script>
         const speedInput = document.getElementById('speed');
-        const speedValue = document.getElementById('speed-value');
-        const btnPause = document.getElementById('btn-pause');
-        const displayArea = document.getElementById('text-display');
-        
-        // Variabili globali per tenere traccia dello stato
-        let wordsArray = [];
-        let globalWordIndex = 0; 
-        let isPaused = false;
+const speedValue = document.getElementById('speed-value');
+const btnPause = document.getElementById('btn-pause');
+const displayArea = document.getElementById('text-display');
 
-        speedInput.addEventListener('input', function() {
-            speedValue.textContent = this.value + 'x';
-        });
+let wordsArray = [];
+let globalWordIndex = 0; 
+let isPaused = false;
+let bestEnglishVoice = null; // Variabile per salvare la voce migliore
 
-        // Funzione per preparare il testo la prima volta
-        function startOrRestartReading() {
-            const text = document.getElementById('text-input').value;
-            if (!text.trim()) return alert("Inserisci un testo!");
+// 1. NOVITÀ: Funzione per caricare e trovare la voce migliore
+function loadVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Cerchiamo una voce inglese. Diamo priorità a quelle di Google o quelle Premium/Online
+    bestEnglishVoice = voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Google')) ||
+                       voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Premium')) ||
+                       voices.find(voice => voice.lang.includes('en-US') && voice.name.includes('Online')) ||
+                       voices.find(voice => voice.lang.includes('en-US')); // Se non trova le prime, prende la prima inglese disponibile
+                       
+    console.log("Voce selezionata:", bestEnglishVoice ? bestEnglishVoice.name : "Nessuna voce trovata");
+}
 
-            window.speechSynthesis.cancel(); // Ferma tutto
-            
-            wordsArray = text.split(/\s+/); // Divide in parole
-            displayArea.innerHTML = '';
-            
-            // Crea gli span per tutte le parole
-            wordsArray.forEach((word, index) => {
-                const span = document.createElement('span');
-                span.id = 'word-' + index;
-                span.innerText = word + ' ';
-                displayArea.appendChild(span);
-            });
+// I browser caricano le voci in modo asincrono, dobbiamo aspettare che siano pronte
+window.speechSynthesis.onvoiceschanged = loadVoices;
 
-            isPaused = false;
-            btnPause.innerText = "Pausa";
-            globalWordIndex = 0;
-            
-            readFromIndex(0);
-        }
+speedInput.addEventListener('input', function() {
+    speedValue.textContent = this.value + 'x';
+});
 
-        // Funzione centrale che avvia la lettura da un punto specifico
-        function readFromIndex(startIndex) {
-            window.speechSynthesis.cancel();
+function startOrRestartReading() {
+    const text = document.getElementById('text-input').value;
+    if (!text.trim()) return alert("Inserisci un testo!");
 
-            // Estraiamo solo il testo che manca da leggere
-            const remainingWords = wordsArray.slice(startIndex);
-            if (remainingWords.length === 0) return;
+    // Assicuriamoci di avere le voci caricate (utile se clicchi subito)
+    if (!bestEnglishVoice) loadVoices();
 
-            const textToSpeak = remainingWords.join(' ');
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'en-US';
-            utterance.rate = parseFloat(speedInput.value);
+    window.speechSynthesis.cancel();
+    
+    wordsArray = text.split(/\s+/);
+    displayArea.innerHTML = '';
+    
+    wordsArray.forEach((word, index) => {
+        const span = document.createElement('span');
+        span.id = 'word-' + index;
+        span.innerText = word + ' ';
+        displayArea.appendChild(span);
+    });
 
-            let localIndexCount = 0;
+    isPaused = false;
+    btnPause.innerText = "Pausa";
+    globalWordIndex = 0;
+    
+    readFromIndex(0);
+}
 
-            utterance.onboundary = function(event) {
-                if (event.name === 'word') {
-                    // Pulisci le evidenziazioni precedenti
-                    document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+function readFromIndex(startIndex) {
+    window.speechSynthesis.cancel();
 
-                    // Calcola l'indice reale (quello di partenza + quanti passi abbiamo fatto finora)
-                    globalWordIndex = startIndex + localIndexCount;
-                    
-                    const currentSpan = document.getElementById('word-' + globalWordIndex);
-                    if (currentSpan) {
-                        currentSpan.classList.add('highlight');
-                    }
-                    localIndexCount++;
-                }
-            };
+    const remainingWords = wordsArray.slice(startIndex);
+    if (remainingWords.length === 0) return;
 
-            // Quando finisce la lettura in modo naturale
-            utterance.onend = function() {
-                document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
-            };
+    const textToSpeak = remainingWords.join(' ');
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    
+    // 2. NOVITÀ: Assegniamo la voce migliore che abbiamo trovato!
+    if (bestEnglishVoice) {
+        utterance.voice = bestEnglishVoice;
+    } else {
+        utterance.lang = 'en-US'; // Fallback di sicurezza
+    }
+    
+    utterance.rate = parseFloat(speedInput.value);
 
-            window.speechSynthesis.speak(utterance);
-        }
+    let localIndexCount = 0;
 
-        // Gestione Pausa / Riprendi
-        function togglePause() {
-            if (window.speechSynthesis.speaking) {
-                if (isPaused) {
-                    window.speechSynthesis.resume();
-                    isPaused = false;
-                    btnPause.innerText = "Pausa";
-                } else {
-                    window.speechSynthesis.pause();
-                    isPaused = true;
-                    btnPause.innerText = "Riprendi";
-                }
+    utterance.onboundary = function(event) {
+        if (event.name === 'word') {
+            document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+            globalWordIndex = startIndex + localIndexCount;
+            const currentSpan = document.getElementById('word-' + globalWordIndex);
+            if (currentSpan) {
+                currentSpan.classList.add('highlight');
             }
+            localIndexCount++;
         }
+    };
 
-        // Gestione Salto Avanti/Indietro
-        function skipWords(offset) {
-            if (wordsArray.length === 0) return; // Se non c'è testo, non fare nulla
+    utterance.onend = function() {
+        document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+    };
 
+    window.speechSynthesis.speak(utterance);
+}
+
+function togglePause() {
+    if (window.speechSynthesis.speaking) {
+        if (isPaused) {
+            window.speechSynthesis.resume();
             isPaused = false;
             btnPause.innerText = "Pausa";
-            
-            // Calcola il nuovo indice
-            let newIndex = globalWordIndex + offset;
-            
-            // Assicuriamoci che l'indice non vada sotto 0 o oltre il numero totale di parole
-            if (newIndex < 0) newIndex = 0;
-            if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
-            
-            globalWordIndex = newIndex;
-            
-            // Fai ripartire la lettura dal nuovo indice
-            readFromIndex(globalWordIndex);
+        } else {
+            window.speechSynthesis.pause();
+            isPaused = true;
+            btnPause.innerText = "Riprendi";
         }
+    }
+}
+
+function skipWords(offset) {
+    if (wordsArray.length === 0) return;
+
+    isPaused = false;
+    btnPause.innerText = "Pausa";
+    
+    let newIndex = globalWordIndex + offset;
+    
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
+    
+    globalWordIndex = newIndex;
+    readFromIndex(globalWordIndex);
+}
+
     </script>
 </body>
 </html>
