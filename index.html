@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Tutor</title>
     <style>
-        /* Stili di base per rendere l'app carina e ordinata */
+        /* Stili di base */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
@@ -13,6 +13,7 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            box-sizing: border-box; /* Aiuta a mantenere il layout nei margini */
         }
 
         .container {
@@ -31,12 +32,15 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
+            box-sizing: border-box; /* Evita che la textarea esca dal contenitore su mobile */
         }
 
+        /* Contenitore dei controlli flessibile */
         .controls {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
+            flex-wrap: wrap; /* Permette agli elementi di andare a capo su schermi piccoli */
             margin-bottom: 20px;
         }
 
@@ -44,20 +48,29 @@
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 15px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
+            flex-grow: 1; /* Su mobile i pulsanti si allargheranno per riempire lo spazio */
+            text-align: center;
         }
 
         button:hover {
             background-color: #0056b3;
         }
 
-        /* Il contenitore dove il testo verrà mostrato parola per parola */
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+
         #text-display {
-            font-size: 24px;
-            line-height: 1.5;
+            font-size: 22px;
+            line-height: 1.6;
             padding: 20px;
             border: 1px dashed #ccc;
             border-radius: 5px;
@@ -65,11 +78,21 @@
             min-height: 100px;
         }
 
-        /* Classe per evidenziare la parola che viene letta */
         .highlight {
-            background-color: #ffeb3b; /* Giallo brillante */
+            background-color: #ffeb3b;
             border-radius: 3px;
             transition: background-color 0.2s;
+        }
+
+        /* REGOLA RESPONSIVE PER SMARTPHONE */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .controls {
+                flex-direction: column; /* Mette i controlli in colonna su schermi piccoli */
+                align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -77,78 +100,136 @@
 
     <div class="container">
         <h2>1. Ascolta e Leggi</h2>
-        <textarea id="text-input" placeholder="Incolla qui il tuo testo in inglese..."></textarea>
+        <textarea id="text-input" placeholder="Incolla qui il tuo testo in inglese...">This is an example text. We are building a great application to practice English pronunciation. This app will be responsive and very easy to use on mobile phones!</textarea>
         
         <div class="controls">
-            <label for="speed">Velocità:</label>
-            <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1">
-            <span id="speed-value">1x</span>
+            <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                <label for="speed">Velocità:</label>
+                <input type="range" id="speed" min="0.5" max="1.5" step="0.1" value="1" style="flex-grow: 1;">
+                <span id="speed-value" style="min-width: 30px;">1x</span>
+            </div>
             
-            <button onclick="startReading()">Ascolta il testo</button>
+            <button onclick="startOrRestartReading()">Avvia / Riavvia</button>
+            <button id="btn-pause" class="secondary" onclick="togglePause()">Pausa</button>
+            <button class="secondary" onclick="skipWords(-10)">⏪ -5 sec</button>
+            <button class="secondary" onclick="skipWords(10)">+5 sec ⏩</button>
         </div>
 
         <div id="text-display">Il testo apparirà qui...</div>
     </div>
 
     <script>
-        // Aggiorna l'etichetta della velocità quando muovi lo slider
         const speedInput = document.getElementById('speed');
         const speedValue = document.getElementById('speed-value');
+        const btnPause = document.getElementById('btn-pause');
+        const displayArea = document.getElementById('text-display');
         
+        // Variabili globali per tenere traccia dello stato
+        let wordsArray = [];
+        let globalWordIndex = 0; 
+        let isPaused = false;
+
         speedInput.addEventListener('input', function() {
             speedValue.textContent = this.value + 'x';
         });
 
-        // Funzione principale per leggere il testo
-        function startReading() {
+        // Funzione per preparare il testo la prima volta
+        function startOrRestartReading() {
             const text = document.getElementById('text-input').value;
-            const displayArea = document.getElementById('text-display');
-            
-            if (!text.trim()) {
-                alert("Per favore, inserisci un testo prima di iniziare.");
-                return;
-            }
+            if (!text.trim()) return alert("Inserisci un testo!");
 
-            // Prepariamo l'area di visualizzazione: dividiamo il testo in parole
-            // e mettiamo ogni parola in uno <span> per poterla colorare singolarmente
-            const words = text.split(/\s+/); // Divide per spazi
+            window.speechSynthesis.cancel(); // Ferma tutto
+            
+            wordsArray = text.split(/\s+/); // Divide in parole
             displayArea.innerHTML = '';
             
-            words.forEach((word, index) => {
+            // Crea gli span per tutte le parole
+            wordsArray.forEach((word, index) => {
                 const span = document.createElement('span');
                 span.id = 'word-' + index;
-                span.innerText = word + ' '; // Aggiunge lo spazio dopo la parola
+                span.innerText = word + ' ';
                 displayArea.appendChild(span);
             });
 
-            // Fermiamo eventuali letture precedenti
+            isPaused = false;
+            btnPause.innerText = "Pausa";
+            globalWordIndex = 0;
+            
+            readFromIndex(0);
+        }
+
+        // Funzione centrale che avvia la lettura da un punto specifico
+        function readFromIndex(startIndex) {
             window.speechSynthesis.cancel();
 
-            // Configuriamo la voce del computer
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; // Impostiamo l'inglese americano
-            utterance.rate = parseFloat(speedInput.value); // Prendiamo la velocità dallo slider
+            // Estraiamo solo il testo che manca da leggere
+            const remainingWords = wordsArray.slice(startIndex);
+            if (remainingWords.length === 0) return;
 
-            let currentWordIndex = 0;
+            const textToSpeak = remainingWords.join(' ');
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'en-US';
+            utterance.rate = parseFloat(speedInput.value);
 
-            // L'evento 'boundary' scatta quando inizia a leggere una nuova parola
+            let localIndexCount = 0;
+
             utterance.onboundary = function(event) {
                 if (event.name === 'word') {
-                    // Rimuove l'evidenziazione da tutte le parole
-                    const allSpans = displayArea.querySelectorAll('span');
-                    allSpans.forEach(s => s.classList.remove('highlight'));
+                    // Pulisci le evidenziazioni precedenti
+                    document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
 
-                    // Evidenzia la parola corrente
-                    const currentSpan = document.getElementById('word-' + currentWordIndex);
+                    // Calcola l'indice reale (quello di partenza + quanti passi abbiamo fatto finora)
+                    globalWordIndex = startIndex + localIndexCount;
+                    
+                    const currentSpan = document.getElementById('word-' + globalWordIndex);
                     if (currentSpan) {
                         currentSpan.classList.add('highlight');
                     }
-                    currentWordIndex++;
+                    localIndexCount++;
                 }
             };
 
-            // Avviamo la lettura
+            // Quando finisce la lettura in modo naturale
+            utterance.onend = function() {
+                document.querySelectorAll('.highlight').forEach(s => s.classList.remove('highlight'));
+            };
+
             window.speechSynthesis.speak(utterance);
+        }
+
+        // Gestione Pausa / Riprendi
+        function togglePause() {
+            if (window.speechSynthesis.speaking) {
+                if (isPaused) {
+                    window.speechSynthesis.resume();
+                    isPaused = false;
+                    btnPause.innerText = "Pausa";
+                } else {
+                    window.speechSynthesis.pause();
+                    isPaused = true;
+                    btnPause.innerText = "Riprendi";
+                }
+            }
+        }
+
+        // Gestione Salto Avanti/Indietro
+        function skipWords(offset) {
+            if (wordsArray.length === 0) return; // Se non c'è testo, non fare nulla
+
+            isPaused = false;
+            btnPause.innerText = "Pausa";
+            
+            // Calcola il nuovo indice
+            let newIndex = globalWordIndex + offset;
+            
+            // Assicuriamoci che l'indice non vada sotto 0 o oltre il numero totale di parole
+            if (newIndex < 0) newIndex = 0;
+            if (newIndex >= wordsArray.length) newIndex = wordsArray.length - 1;
+            
+            globalWordIndex = newIndex;
+            
+            // Fai ripartire la lettura dal nuovo indice
+            readFromIndex(globalWordIndex);
         }
     </script>
 </body>
