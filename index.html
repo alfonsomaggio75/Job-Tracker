@@ -217,7 +217,7 @@
         }
         .data-management-box h4 { margin-top: 0; margin-bottom: 10px; }
 
-        /* --- STILI VOCABOLARIO (Miglioramento 2 e 3) --- */
+        /* --- STILI VOCABOLARIO E MODALE DIZIONARIO (Miglioramento 2, 3 e 4) --- */
         .vocab-word {
             background-color: white;
             border: 1px solid #ccc;
@@ -227,11 +227,11 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            cursor: pointer; /* Miglioramento 3: cursore cliccabile */
+            cursor: pointer; 
             transition: background-color 0.2s;
         }
         .vocab-word:hover {
-            background-color: #e2e6ea; /* Miglioramento 3: effetto hover */
+            background-color: #e2e6ea; 
         }
         .badge-red { 
             background: #dc3545; color: white; border-radius: 10px; 
@@ -241,12 +241,62 @@
             background: #fd7e14; color: white; border-radius: 10px; 
             padding: 2px 6px; font-size: 12px; font-weight: bold; 
         }
+        .dict-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 0 0 8px;
+            border-left: 1px solid #ccc;
+            color: #007bff;
+        }
+        .dict-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Modale per il Dizionario */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; 
+            padding: 20px 30px;
+            border: 1px solid #888;
+            width: 90%; 
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            line-height: 1.6;
+        }
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close-modal:hover,
+        .close-modal:focus {
+            color: black;
+            text-decoration: none;
+        }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
             .voice-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
             .filter-section { flex-direction: column; align-items: stretch; }
+            .modal-content { margin: 20% auto; padding: 20px; }
         }
     </style>
 </head>
@@ -364,7 +414,7 @@
 
         <div id="vocabulary-view" class="view-section">
             <h2>Vocabolario Errori</h2>
-            <p>Clicca su una parola per ascoltarne la corretta pronuncia.</p>
+            <p>Clicca su una parola per ascoltarne la corretta pronuncia. Clicca su 📖 per significato e fonetica.</p>
             
             <div class="filter-section" style="margin-bottom: 20px;">
                 <label for="vocab-filter"><strong>Filtra per:</strong></label>
@@ -400,6 +450,16 @@
                 <h4 style="color: #856404;">Reset Completo</h4>
                 <button class="danger" onclick="deleteAllHistory()">⚠️ Elimina TUTTO lo storico</button>
             </div>
+        </div>
+    </div>
+
+    <div id="dictionary-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeDictionaryModal()">&times;</span>
+            <h2 id="dict-word" style="margin-top: 0; color: #007bff; font-size: 32px;">Word</h2>
+            <p><strong>Fonetica:</strong> <span id="dict-phonetic" style="font-family: monospace; font-size: 18px; color: #555;"></span></p>
+            <div id="dict-meanings" style="margin-top: 15px;"></div>
+            <p style="margin-top: 15px;"><strong>Sinonimi:</strong> <span id="dict-synonyms" style="color: #28a745;"></span></p>
         </div>
     </div>
 
@@ -1053,7 +1113,7 @@
             }
         }
 
-        // --- VOCABOLARIO (Miglioramento 2 e 3) ---
+        // --- VOCABOLARIO E DIZIONARIO (Miglioramento 2, 3 e 4) ---
         function renderVocabulary() {
             const stats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             const filter = document.getElementById('vocab-filter').value;
@@ -1085,7 +1145,6 @@
             wordsArray.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'vocab-word';
-                // Aggiunta evento click (Miglioramento 3)
                 div.onclick = () => speakSingleWord(item.word);
                 
                 let html = `<strong>${item.word}</strong>`;
@@ -1096,9 +1155,81 @@
                     html += `<span class="badge-yellow" title="Errori Gialli">${item.almost}</span>`;
                 }
                 
+                // Miglioramento 4: Tasto approfondimento solo per parole con errori rossi
+                if (item.wrong > 0) {
+                    html += `<button class="dict-btn" onclick="openDictionary(event, '${item.word}')" title="Scopri significato e fonetica">📖</button>`;
+                }
+                
                 div.innerHTML = html;
                 vocabList.appendChild(div);
             });
+        }
+
+        // Funzione per recuperare i dati dal dizionario (Miglioramento 4)
+        function openDictionary(event, word) {
+            event.stopPropagation(); // Evita che venga riprodotto l'audio cliccando sull'icona libro
+            
+            const modal = document.getElementById('dictionary-modal');
+            const wordTitle = document.getElementById('dict-word');
+            const phoneticSpan = document.getElementById('dict-phonetic');
+            const meaningsDiv = document.getElementById('dict-meanings');
+            const synonymsSpan = document.getElementById('dict-synonyms');
+
+            modal.style.display = 'block';
+            wordTitle.innerText = word.charAt(0).toUpperCase() + word.slice(1);
+            phoneticSpan.innerHTML = '<em>Caricamento...</em>';
+            meaningsDiv.innerHTML = '<p>Caricamento definizioni...</p>';
+            synonymsSpan.innerHTML = '<em>Caricamento...</em>';
+
+            // API gratuita che si appoggia ai database Oxford/Wiktionary
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+                .then(res => {
+                    if(!res.ok) throw new Error("Parola non trovata nel dizionario");
+                    return res.json();
+                })
+                .then(data => {
+                    const entry = data[0];
+                    
+                    // Estrazione Fonetica
+                    let phonetic = entry.phonetic || (entry.phonetics && entry.phonetics.length > 0 ? entry.phonetics.find(p => p.text)?.text : "Non disponibile");
+                    phoneticSpan.innerText = phonetic || "Non disponibile";
+
+                    // Estrazione Significati
+                    let meaningsHtml = '<h4 style="margin-bottom: 5px;">Significati:</h4><ul style="margin-top:0; padding-left: 20px;">';
+                    entry.meanings.forEach(m => {
+                        let def = m.definitions[0].definition;
+                        meaningsHtml += `<li><strong style="color: #6c757d;">${m.partOfSpeech}</strong>: ${def}</li>`;
+                    });
+                    meaningsHtml += '</ul>';
+                    meaningsDiv.innerHTML = meaningsHtml;
+
+                    // Estrazione Sinonimi
+                    let synonyms = [];
+                    entry.meanings.forEach(m => {
+                        if(m.synonyms && m.synonyms.length > 0) synonyms.push(...m.synonyms);
+                    });
+                    // Rimuove duplicati e tiene solo i primi 5
+                    synonyms = [...new Set(synonyms)].slice(0, 5);
+                    synonymsSpan.innerText = synonyms.length > 0 ? synonyms.join(', ') : "Nessun sinonimo trovato.";
+                })
+                .catch(err => {
+                    phoneticSpan.innerText = "Non disponibile";
+                    meaningsDiv.innerHTML = `<p style="color: #dc3545;"><em>Impossibile trovare definizioni in lingua inglese per "${word}".</em></p>`;
+                    synonymsSpan.innerText = "-";
+                });
+        }
+
+        // Funzione per chiudere la modale
+        function closeDictionaryModal() {
+            document.getElementById('dictionary-modal').style.display = 'none';
+        }
+
+        // Chiude la modale se si clicca fuori dal riquadro bianco
+        window.onclick = function(event) {
+            const modal = document.getElementById('dictionary-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         }
 
         // Inizializza dashboard all'avvio
