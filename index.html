@@ -161,12 +161,13 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- STILI DASHBOARD (Miglioramento 1) --- */
+        /* --- STILI DASHBOARD --- */
         .dash-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 15px;
             margin-top: 20px;
+            margin-bottom: 30px;
         }
         .stat-card {
             background: #fff;
@@ -181,6 +182,24 @@
         .stat-green h3 { color: #28a745; }
         .stat-yellow h3 { color: #fd7e14; }
         .stat-red h3 { color: #dc3545; }
+
+        /* --- STILI LISTA SESSIONI (Miglioramento 2) --- */
+        .session-item {
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .session-item:hover { background-color: #f8f9fa; }
+        .session-info { font-size: 15px; }
+        .session-info strong { color: #007bff; }
+        .session-stats span { margin-left: 10px; font-weight: bold; }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
@@ -244,6 +263,7 @@
         <div id="dashboard-view" class="view-section">
             <h2>Dashboard Prestazioni</h2>
             <p>Monitora i tuoi progressi nel tempo basati sulle sessioni di pratica completate.</p>
+            
             <div class="dash-grid">
                 <div class="stat-card">
                     <h3 id="stat-sessions">0</h3>
@@ -265,6 +285,12 @@
                     <h3 id="stat-wrong">0</h3>
                     <p>Parole Errate</p>
                 </div>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <h3>Storico Sessioni</h3>
+                <div id="session-list">
+                    </div>
             </div>
         </div>
 
@@ -662,7 +688,12 @@
         function elaborateResults() {
             let wordStats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             let sessionErrors = [];
+            let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
             
+            // Creazione dati per il salvataggio con ID e Data formattata
+            const sessionId = sessionHistory.length + 1;
+            const sessionDate = new Date().toLocaleString('it-IT');
+
             sessionResults.forEach(item => {
                 if (item.status === 'wrong' || item.status === 'almost') {
                     if (!wordStats[item.clean]) {
@@ -677,9 +708,10 @@
             });
             localStorage.setItem('myWordStats', JSON.stringify(wordStats));
 
-            let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
             sessionHistory.push({
-                date: new Date().toISOString(),
+                id: sessionId,
+                date: sessionDate,
+                rawDate: new Date().toISOString(),
                 textLength: practiceExpectedClean.length,
                 results: sessionResults
             });
@@ -703,11 +735,9 @@
 
             if(currentTargetIndex > 0) resultsDiv.style.display = 'block';
             
-            // Aggiorna la dashboard dopo aver salvato i nuovi risultati
             updateDashboard();
         }
 
-        // --- FUNZIONE AGGIORNAMENTO DASHBOARD (Miglioramento 1) ---
         function updateDashboard() {
             let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
             
@@ -732,15 +762,53 @@
                 }
             });
 
-            // Scrittura dei dati in modo sicuro con fallback a 0 per evitare NaN
             document.getElementById('stat-sessions').innerText = isNaN(totalSessions) ? 0 : totalSessions;
             document.getElementById('stat-words').innerText = isNaN(totalWords) ? 0 : totalWords;
             document.getElementById('stat-correct').innerText = isNaN(totalCorrect) ? 0 : totalCorrect;
             document.getElementById('stat-almost').innerText = isNaN(totalAlmost) ? 0 : totalAlmost;
             document.getElementById('stat-wrong').innerText = isNaN(totalWrong) ? 0 : totalWrong;
+
+            // Aggiorna l'elenco visivo delle sessioni
+            const sessionListDiv = document.getElementById('session-list');
+            if (sessionListDiv) {
+                sessionListDiv.innerHTML = '';
+                if (sessionHistory.length === 0) {
+                    sessionListDiv.innerHTML = '<p style="color: #777;">Nessuna sessione registrata. Inizia la pratica per vedere qui lo storico!</p>';
+                } else {
+                    // Clona l'array e invertilo per mostrare prima i più recenti
+                    [...sessionHistory].reverse().forEach((session, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'session-item';
+                        
+                        // Retrocompatibilità per sessioni vecchie senza ID o data formattata
+                        let dId = session.id || (sessionHistory.length - index); 
+                        let dDate = session.date || new Date(session.rawDate || Date.now()).toLocaleString('it-IT');
+
+                        let sCorrect = 0, sAlmost = 0, sWrong = 0;
+                        if(session.results) {
+                             session.results.forEach(r => {
+                                 if(r.status==='correct') sCorrect++;
+                                 if(r.status==='almost') sAlmost++;
+                                 if(r.status==='wrong') sWrong++;
+                             });
+                        }
+
+                        div.innerHTML = `
+                            <div class="session-info">
+                                <strong>Sessione #${dId}</strong> - ${dDate}
+                            </div>
+                            <div class="session-stats">
+                                <span style="color: #28a745;">✔ ${sCorrect}</span> 
+                                <span style="color: #fd7e14;">~ ${sAlmost}</span> 
+                                <span style="color: #dc3545;">✖ ${sWrong}</span>
+                            </div>
+                        `;
+                        sessionListDiv.appendChild(div);
+                    });
+                }
+            }
         }
 
-        // Inizializza la dashboard all'avvio dell'app
         updateDashboard();
 
     </script>
