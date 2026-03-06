@@ -217,7 +217,7 @@
         }
         .data-management-box h4 { margin-top: 0; margin-bottom: 10px; }
 
-        /* --- STILI VOCABOLARIO (Miglioramento 2) --- */
+        /* --- STILI VOCABOLARIO (Miglioramento 2 e 3) --- */
         .vocab-word {
             background-color: white;
             border: 1px solid #ccc;
@@ -227,6 +227,11 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            cursor: pointer; /* Miglioramento 3: cursore cliccabile */
+            transition: background-color 0.2s;
+        }
+        .vocab-word:hover {
+            background-color: #e2e6ea; /* Miglioramento 3: effetto hover */
         }
         .badge-red { 
             background: #dc3545; color: white; border-radius: 10px; 
@@ -359,7 +364,7 @@
 
         <div id="vocabulary-view" class="view-section">
             <h2>Vocabolario Errori</h2>
-            <p>Le tue parole da migliorare, ordinate per numero di errori.</p>
+            <p>Clicca su una parola per ascoltarne la corretta pronuncia.</p>
             
             <div class="filter-section" style="margin-bottom: 20px;">
                 <label for="vocab-filter"><strong>Filtra per:</strong></label>
@@ -1048,7 +1053,7 @@
             }
         }
 
-        // --- VOCABOLARIO (Miglioramento 2) ---
+        // --- VOCABOLARIO (Miglioramento 2 e 3) ---
         function renderVocabulary() {
             const stats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             const filter = document.getElementById('vocab-filter').value;
@@ -1057,7 +1062,6 @@
 
             let wordsArray = [];
 
-            // Popola array in base al filtro
             for (let word in stats) {
                 let wStat = stats[word];
                 let totalErr = wStat.wrong + wStat.almost;
@@ -1071,7 +1075,6 @@
                 }
             }
 
-            // Ordinamento decrescente per numero di errori
             wordsArray.sort((a, b) => b.sortScore - a.sortScore);
 
             if (wordsArray.length === 0) {
@@ -1079,10 +1082,11 @@
                 return;
             }
 
-            // Genera gli elementi visivi
             wordsArray.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'vocab-word';
+                // Aggiunta evento click (Miglioramento 3)
+                div.onclick = () => speakSingleWord(item.word);
                 
                 let html = `<strong>${item.word}</strong>`;
                 if (item.wrong > 0) {
