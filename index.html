@@ -138,7 +138,7 @@
         }
         .error-btn:hover { background-color: #f8f9fa; }
 
-        /* Stile per l'animazione di caricamento (Bluetooth Fix) */
+        /* Stile per l'animazione di caricamento */
         #loading-evaluation {
             display: none;
             text-align: center;
@@ -161,48 +161,31 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- STILI DASHBOARD --- */
-        .dashboard-cards {
-            display: flex;
+        /* --- STILI DASHBOARD (Miglioramento 1) --- */
+        .dash-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
         .stat-card {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 15px;
-            border-radius: 8px;
-            flex: 1;
-            min-width: 140px;
-            text-align: center;
-        }
-        .stat-card h4 { margin: 0 0 10px 0; color: #6c757d; font-size: 14px; text-transform: uppercase; }
-        .stat-card .value { font-size: 28px; font-weight: bold; color: #343a40; margin: 0; }
-        .session-item {
             background: #fff;
-            border: 1px solid #e9ecef;
-            border-left: 4px solid #007bff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
             padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .session-info { font-size: 15px; }
-        .session-stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; }
-        .s-correct { color: #28a745; }
-        .s-almost { color: #fd7e14; }
-        .s-wrong { color: #dc3545; }
+        .stat-card h3 { margin: 0; font-size: 28px; color: #007bff; }
+        .stat-card p { margin: 5px 0 0 0; font-size: 13px; color: #555; font-weight: 600; }
+        .stat-green h3 { color: #28a745; }
+        .stat-yellow h3 { color: #fd7e14; }
+        .stat-red h3 { color: #dc3545; }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
             .voice-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
-            .session-item { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -212,8 +195,8 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('reading-view', this)">1. Lettura</button>
             <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia</button>
-            <button class="tab-btn" onclick="switchTab('dashboard-view', this)">📊 Dashboard</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">⚙️ Voci</button>
+            <button class="tab-btn" onclick="switchTab('dashboard-view', this)">3. Statistiche</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">4. ⚙️ Voci</button>
         </div>
 
         <div id="reading-view" class="view-section active">
@@ -259,21 +242,30 @@
         </div>
 
         <div id="dashboard-view" class="view-section">
-            <h2>Dashboard Statistiche</h2>
-            <div class="dashboard-cards">
+            <h2>Dashboard Prestazioni</h2>
+            <p>Monitora i tuoi progressi nel tempo basati sulle sessioni di pratica completate.</p>
+            <div class="dash-grid">
                 <div class="stat-card">
-                    <h4>Sessioni Totali</h4>
-                    <p class="value" id="dash-total-sessions">0</p>
+                    <h3 id="stat-sessions">0</h3>
+                    <p>Sessioni Avviate</p>
                 </div>
                 <div class="stat-card">
-                    <h4>Parole Lette</h4>
-                    <p class="value" id="dash-total-words">0</p>
+                    <h3 id="stat-words">0</h3>
+                    <p>Parole Lette Totali</p>
+                </div>
+                <div class="stat-card stat-green">
+                    <h3 id="stat-correct">0</h3>
+                    <p>Parole Corrette</p>
+                </div>
+                <div class="stat-card stat-yellow">
+                    <h3 id="stat-almost">0</h3>
+                    <p>Da Migliorare</p>
+                </div>
+                <div class="stat-card stat-red">
+                    <h3 id="stat-wrong">0</h3>
+                    <p>Parole Errate</p>
                 </div>
             </div>
-
-            <h3>Cronologia Sessioni</h3>
-            <div id="dashboard-history">
-                </div>
         </div>
 
         <div id="config-view" class="view-section">
@@ -299,11 +291,6 @@
             
             window.speechSynthesis.cancel();
             if (isPracticing) forceStopPractice(); 
-
-            // Aggiorna la dashboard quando viene aperta
-            if (tabId === 'dashboard-view') {
-                updateDashboard();
-            }
         }
 
         speedInput.addEventListener('input', function() { speedValue.textContent = this.value + 'x'; });
@@ -395,6 +382,7 @@
             utterance.lang = 'en-US';
             utterance.onstart = () => { isSystemSpeaking = true; };
             utterance.onend = () => { isSystemSpeaking = false; };
+            
             window.speechSynthesis.speak(utterance);
         }
 
@@ -569,8 +557,10 @@
                     if (currentWordRetries === 0) {
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: evalResult });
                     }
+                    
                     currentTargetIndex++;
                     currentWordRetries = 0; 
+
                 } else {
                     currentWordRetries++;
                     targetSpan.className = 'word-wrong word-active'; 
@@ -578,6 +568,7 @@
                     if (currentWordRetries >= 3) {
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: 'wrong' });
                         targetSpan.className = 'word-wrong';
+                        
                         speakSingleWord(originalWord);
                         currentTargetIndex++;
                         currentWordRetries = 0;
@@ -668,7 +659,6 @@
             document.getElementById('loading-evaluation').style.display = 'none';
         }
 
-        // --- SALVATAGGIO E MOSTRA RISULTATI ---
         function elaborateResults() {
             let wordStats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             let sessionErrors = [];
@@ -711,69 +701,48 @@
                 });
             }
 
-            if(currentTargetIndex > 0) {
-                resultsDiv.style.display = 'block';
-                updateDashboard(); // Aggiorna anche la dashboard in background
-            }
+            if(currentTargetIndex > 0) resultsDiv.style.display = 'block';
+            
+            // Aggiorna la dashboard dopo aver salvato i nuovi risultati
+            updateDashboard();
         }
 
-        // --- FUNZIONALITA' DASHBOARD ---
+        // --- FUNZIONE AGGIORNAMENTO DASHBOARD (Miglioramento 1) ---
         function updateDashboard() {
             let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
             
-            document.getElementById('dash-total-sessions').innerText = sessionHistory.length;
-            
-            let totalWordsRead = 0;
-            const historyContainer = document.getElementById('dashboard-history');
-            historyContainer.innerHTML = '';
+            let totalSessions = sessionHistory.length;
+            let totalWords = 0;
+            let totalCorrect = 0;
+            let totalAlmost = 0;
+            let totalWrong = 0;
 
-            if (sessionHistory.length === 0) {
-                historyContainer.innerHTML = '<p>Nessuna sessione registrata. Inizia a praticare!</p>';
-                return;
-            }
-
-            // Invertiamo l'array per mostrare le più recenti per prime
-            [...sessionHistory].reverse().forEach((session, reversedIndex) => {
-                const trueIndex = sessionHistory.length - reversedIndex; 
-                totalWordsRead += session.textLength || 0;
-
-                let correctCount = 0;
-                let almostCount = 0;
-                let wrongCount = 0;
-
-                if (session.results) {
-                    session.results.forEach(r => {
-                        if (r.status === 'correct') correctCount++;
-                        else if (r.status === 'almost') almostCount++;
-                        else if (r.status === 'wrong') wrongCount++;
+            sessionHistory.forEach(session => {
+                let length = parseInt(session.textLength);
+                if (!isNaN(length)) {
+                    totalWords += length;
+                }
+                
+                if (session.results && Array.isArray(session.results)) {
+                    session.results.forEach(res => {
+                        if (res.status === 'correct') totalCorrect++;
+                        if (res.status === 'almost') totalAlmost++;
+                        if (res.status === 'wrong') totalWrong++;
                     });
                 }
-
-                const dateObj = new Date(session.date);
-                const formattedDate = dateObj.toLocaleDateString('it-IT') + ' ' + dateObj.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'session-item';
-                
-                itemDiv.innerHTML = `
-                    <div class="session-info">
-                        <strong>Sessione #${trueIndex}</strong> - ${formattedDate}<br>
-                        <small>Totale parole nel testo: ${session.textLength || 0}</small>
-                    </div>
-                    <div class="session-stats">
-                        <span class="s-correct">✓ Corrette: ${correctCount}</span>
-                        <span class="s-almost">~ Migliorabili: ${almostCount}</span>
-                        <span class="s-wrong">✗ Errate: ${wrongCount}</span>
-                    </div>
-                `;
-                historyContainer.appendChild(itemDiv);
             });
 
-            document.getElementById('dash-total-words').innerText = totalWordsRead;
+            // Scrittura dei dati in modo sicuro con fallback a 0 per evitare NaN
+            document.getElementById('stat-sessions').innerText = isNaN(totalSessions) ? 0 : totalSessions;
+            document.getElementById('stat-words').innerText = isNaN(totalWords) ? 0 : totalWords;
+            document.getElementById('stat-correct').innerText = isNaN(totalCorrect) ? 0 : totalCorrect;
+            document.getElementById('stat-almost').innerText = isNaN(totalAlmost) ? 0 : totalAlmost;
+            document.getElementById('stat-wrong').innerText = isNaN(totalWrong) ? 0 : totalWrong;
         }
 
-        // Inizializza la dashboard al caricamento della pagina in background
+        // Inizializza la dashboard all'avvio dell'app
         updateDashboard();
+
     </script>
 </body>
 </html>
