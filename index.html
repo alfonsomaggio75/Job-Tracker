@@ -217,6 +217,26 @@
         }
         .data-management-box h4 { margin-top: 0; margin-bottom: 10px; }
 
+        /* --- STILI VOCABOLARIO (Miglioramento 2) --- */
+        .vocab-word {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge-red { 
+            background: #dc3545; color: white; border-radius: 10px; 
+            padding: 2px 6px; font-size: 12px; font-weight: bold; 
+        }
+        .badge-yellow { 
+            background: #fd7e14; color: white; border-radius: 10px; 
+            padding: 2px 6px; font-size: 12px; font-weight: bold; 
+        }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
@@ -232,7 +252,8 @@
             <button class="tab-btn active" onclick="switchTab('reading-view', this)">1. Lettura</button>
             <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia</button>
             <button class="tab-btn" onclick="switchTab('dashboard-view', this)">3. Statistiche</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">4. ⚙️ Impostazioni</button>
+            <button class="tab-btn" onclick="switchTab('vocabulary-view', this)">4. Vocabolario</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">5. ⚙️ Impostazioni</button>
         </div>
 
         <div id="reading-view" class="view-section active">
@@ -336,6 +357,23 @@
             </div>
         </div>
 
+        <div id="vocabulary-view" class="view-section">
+            <h2>Vocabolario Errori</h2>
+            <p>Le tue parole da migliorare, ordinate per numero di errori.</p>
+            
+            <div class="filter-section" style="margin-bottom: 20px;">
+                <label for="vocab-filter"><strong>Filtra per:</strong></label>
+                <select id="vocab-filter" onchange="renderVocabulary()" style="max-width: 300px; margin-bottom: 0;">
+                    <option value="all">Tutte (Rosse e Gialle)</option>
+                    <option value="red">Solo Rosse (Errate)</option>
+                    <option value="yellow">Solo Gialle (Migliorabili)</option>
+                </select>
+            </div>
+
+            <div id="vocabulary-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                </div>
+        </div>
+
         <div id="config-view" class="view-section">
             <h2>Voci Preferite</h2>
             <div id="voices-list"></div>
@@ -381,6 +419,9 @@
             
             if(tabId === 'dashboard-view') {
                 applyFilters();
+            }
+            if(tabId === 'vocabulary-view') {
+                renderVocabulary();
             }
         }
 
@@ -802,7 +843,7 @@
             applyFilters();
         }
 
-        // --- GESTIONE DASHBOARD, FILTRI E GRAFICO ---
+        // --- GESTIONE DASHBOARD E GRAFICO ---
         function resetFilters() {
             document.getElementById('filter-start').value = '';
             document.getElementById('filter-end').value = '';
@@ -960,13 +1001,14 @@
             document.getElementById('performanceChart').style.minHeight = '300px';
         }
 
-        // --- GESTIONE DATI (Miglioramento 1) ---
+        // --- GESTIONE DATI ---
         function deleteAllHistory() {
             if(confirm("Sei sicuro di voler eliminare TUTTO lo storico delle tue sessioni e gli errori registrati? Questa operazione non può essere annullata.")) {
                 localStorage.removeItem('mySessionLog');
                 localStorage.removeItem('myWordStats');
                 alert("Tutto lo storico è stato eliminato con successo.");
                 applyFilters(); 
+                renderVocabulary();
             }
         }
 
@@ -997,8 +1039,6 @@
                         endObj.setHours(23,59,59,999);
                         if (sessionDateObj > endObj) isToDelete = false;
                     }
-                    
-                    // Manteniamo solo le sessioni che NON rientrano nei criteri di eliminazione
                     return !isToDelete; 
                 });
 
@@ -1008,7 +1048,56 @@
             }
         }
 
-        // Inizializza dashboard
+        // --- VOCABOLARIO (Miglioramento 2) ---
+        function renderVocabulary() {
+            const stats = JSON.parse(localStorage.getItem('myWordStats')) || {};
+            const filter = document.getElementById('vocab-filter').value;
+            const vocabList = document.getElementById('vocabulary-list');
+            vocabList.innerHTML = '';
+
+            let wordsArray = [];
+
+            // Popola array in base al filtro
+            for (let word in stats) {
+                let wStat = stats[word];
+                let totalErr = wStat.wrong + wStat.almost;
+
+                if (filter === 'all' && totalErr > 0) {
+                    wordsArray.push({ word: word, wrong: wStat.wrong, almost: wStat.almost, sortScore: totalErr });
+                } else if (filter === 'red' && wStat.wrong > 0) {
+                    wordsArray.push({ word: word, wrong: wStat.wrong, almost: wStat.almost, sortScore: wStat.wrong });
+                } else if (filter === 'yellow' && wStat.almost > 0) {
+                    wordsArray.push({ word: word, wrong: wStat.wrong, almost: wStat.almost, sortScore: wStat.almost });
+                }
+            }
+
+            // Ordinamento decrescente per numero di errori
+            wordsArray.sort((a, b) => b.sortScore - a.sortScore);
+
+            if (wordsArray.length === 0) {
+                vocabList.innerHTML = '<p style="color: #777; width: 100%;">Nessuna parola trovata con questi criteri. Ottimo lavoro!</p>';
+                return;
+            }
+
+            // Genera gli elementi visivi
+            wordsArray.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'vocab-word';
+                
+                let html = `<strong>${item.word}</strong>`;
+                if (item.wrong > 0) {
+                    html += `<span class="badge-red" title="Errori Rossi">${item.wrong}</span>`;
+                }
+                if (item.almost > 0) {
+                    html += `<span class="badge-yellow" title="Errori Gialli">${item.almost}</span>`;
+                }
+                
+                div.innerHTML = html;
+                vocabList.appendChild(div);
+            });
+        }
+
+        // Inizializza dashboard all'avvio
         applyFilters();
 
     </script>
