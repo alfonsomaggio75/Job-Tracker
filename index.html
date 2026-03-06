@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Tutor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- STILI DI BASE --- */
         body {
@@ -32,13 +33,15 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        select {
-            width: 100%;
+        select, input[type="date"] {
             padding: 10px;
-            margin-bottom: 20px;
             border-radius: 5px;
             border: 1px solid #ccc;
             font-size: 16px;
+        }
+        select {
+            width: 100%;
+            margin-bottom: 20px;
         }
         .controls {
             display: flex;
@@ -161,13 +164,12 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- STILI DASHBOARD --- */
+        /* --- STILI DASHBOARD E GRAFICO --- */
         .dash-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 15px;
-            margin-top: 20px;
-            margin-bottom: 30px;
+            margin-top: 15px;
         }
         .stat-card {
             background: #fff;
@@ -179,32 +181,35 @@
         }
         .stat-card h3 { margin: 0; font-size: 28px; color: #007bff; }
         .stat-card p { margin: 5px 0 0 0; font-size: 13px; color: #555; font-weight: 600; }
-        .stat-green h3 { color: #28a745; }
-        .stat-yellow h3 { color: #fd7e14; }
-        .stat-red h3 { color: #dc3545; }
+        
+        .stat-green h3, .color-green { color: #28a745 !important; }
+        .stat-yellow h3, .color-yellow { color: #fd7e14 !important; }
+        .stat-red h3, .color-red { color: #dc3545 !important; }
 
-        /* --- STILI LISTA SESSIONI (Miglioramento 2) --- */
-        .session-item {
-            background: #fff;
-            border: 1px solid #eee;
-            padding: 12px 15px;
-            border-radius: 6px;
-            margin-bottom: 10px;
+        .filter-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
+            align-items: center;
         }
-        .session-item:hover { background-color: #f8f9fa; }
-        .session-info { font-size: 15px; }
-        .session-info strong { color: #007bff; }
-        .session-stats span { margin-left: 10px; font-weight: bold; }
+        .chart-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            margin-top: 20px;
+        }
 
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
             .voice-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
+            .filter-section { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
@@ -262,35 +267,60 @@
 
         <div id="dashboard-view" class="view-section">
             <h2>Dashboard Prestazioni</h2>
-            <p>Monitora i tuoi progressi nel tempo basati sulle sessioni di pratica completate.</p>
             
-            <div class="dash-grid">
-                <div class="stat-card">
-                    <h3 id="stat-sessions">0</h3>
-                    <p>Sessioni Avviate</p>
+            <div class="filter-section">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <label><strong>Da:</strong> <input type="date" id="filter-start"></label>
+                    <label><strong>A:</strong> <input type="date" id="filter-end"></label>
                 </div>
-                <div class="stat-card">
-                    <h3 id="stat-words">0</h3>
-                    <p>Parole Lette Totali</p>
-                </div>
-                <div class="stat-card stat-green">
-                    <h3 id="stat-correct">0</h3>
-                    <p>Parole Corrette</p>
-                </div>
-                <div class="stat-card stat-yellow">
-                    <h3 id="stat-almost">0</h3>
-                    <p>Da Migliorare</p>
-                </div>
-                <div class="stat-card stat-red">
-                    <h3 id="stat-wrong">0</h3>
-                    <p>Parole Errate</p>
+                <div style="display: flex; gap: 10px; flex-grow: 1;">
+                    <button class="secondary flex-btn" onclick="applyFilters()">Applica Filtro</button>
+                    <button class="secondary flex-btn" onclick="resetFilters()">Totale (Tutto)</button>
                 </div>
             </div>
 
-            <div style="margin-top: 30px;">
-                <h3>Storico Sessioni</h3>
-                <div id="session-list">
-                    </div>
+            <h3 style="margin-bottom: 0;">Quantità Lette (in base al filtro)</h3>
+            <div class="dash-grid">
+                <div class="stat-card">
+                    <h3 id="stat-sessions">0</h3>
+                    <p>Sessioni</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-words">0</h3>
+                    <p>Parole Totali</p>
+                </div>
+                <div class="stat-card stat-green">
+                    <h3 id="stat-correct">0</h3>
+                    <p>Corrette</p>
+                </div>
+                <div class="stat-card stat-yellow">
+                    <h3 id="stat-almost">0</h3>
+                    <p>Migliorabili</p>
+                </div>
+                <div class="stat-card stat-red">
+                    <h3 id="stat-wrong">0</h3>
+                    <p>Errate</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; margin-bottom: 0;">Efficacia di Lettura (in base al filtro)</h3>
+            <div class="dash-grid">
+                <div class="stat-card stat-green">
+                    <h3 id="eff-correct">0%</h3>
+                    <p>Efficacia (Verdi / Lette)</p>
+                </div>
+                <div class="stat-card stat-yellow">
+                    <h3 id="eff-almost">0%</h3>
+                    <p>Rapporto (Gialle / Lette)</p>
+                </div>
+                <div class="stat-card stat-red">
+                    <h3 id="eff-wrong">0%</h3>
+                    <p>Rapporto Errori (Rosse / Lette)</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="performanceChart"></canvas>
             </div>
         </div>
 
@@ -307,6 +337,7 @@
         let availableVoices = []; 
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
         let isSystemSpeaking = false; 
+        let myChartInstance = null; // Variabile per il grafico
         
         // --- FUNZIONI COMUNI ---
         function switchTab(tabId, btnElement) {
@@ -317,6 +348,11 @@
             
             window.speechSynthesis.cancel();
             if (isPracticing) forceStopPractice(); 
+            
+            // Se si apre la dashboard, aggiorna il grafico
+            if(tabId === 'dashboard-view') {
+                applyFilters();
+            }
         }
 
         speedInput.addEventListener('input', function() { speedValue.textContent = this.value + 'x'; });
@@ -690,7 +726,6 @@
             let sessionErrors = [];
             let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
             
-            // Creazione dati per il salvataggio con ID e Data formattata
             const sessionId = sessionHistory.length + 1;
             const sessionDate = new Date().toLocaleString('it-IT');
 
@@ -735,81 +770,180 @@
 
             if(currentTargetIndex > 0) resultsDiv.style.display = 'block';
             
-            updateDashboard();
+            // Aggiorna il grafico dopo il salvataggio
+            applyFilters();
         }
 
-        function updateDashboard() {
+        // --- GESTIONE DASHBOARD, FILTRI E GRAFICO ---
+        
+        function resetFilters() {
+            document.getElementById('filter-start').value = '';
+            document.getElementById('filter-end').value = '';
+            applyFilters();
+        }
+
+        function applyFilters() {
             let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
-            
-            let totalSessions = sessionHistory.length;
+            const startDateStr = document.getElementById('filter-start').value;
+            const endDateStr = document.getElementById('filter-end').value;
+
+            let filteredData = sessionHistory;
+
+            // Filtro per Data
+            if (startDateStr || endDateStr) {
+                filteredData = sessionHistory.filter(session => {
+                    // Controllo compatibilità con vecchie sessioni (che non avevano rawDate)
+                    let sessionDateObj = session.rawDate ? new Date(session.rawDate) : new Date(); 
+                    sessionDateObj.setHours(0,0,0,0);
+                    
+                    let isValid = true;
+                    if (startDateStr) {
+                        let startObj = new Date(startDateStr);
+                        startObj.setHours(0,0,0,0);
+                        if (sessionDateObj < startObj) isValid = false;
+                    }
+                    if (endDateStr) {
+                        let endObj = new Date(endDateStr);
+                        endObj.setHours(23,59,59,999);
+                        if (sessionDateObj > endObj) isValid = false;
+                    }
+                    return isValid;
+                });
+            }
+
+            renderDashboardAndChart(filteredData);
+        }
+
+        function renderDashboardAndChart(dataArray) {
+            let totalSessions = dataArray.length;
             let totalWords = 0;
             let totalCorrect = 0;
             let totalAlmost = 0;
             let totalWrong = 0;
 
-            sessionHistory.forEach(session => {
+            // Dati per il grafico
+            let chartLabels = [];
+            let chartTotalWords = [];
+            let chartCorrectWords = [];
+            let chartAlmostWords = [];
+            let chartWrongWords = [];
+
+            dataArray.forEach(session => {
                 let length = parseInt(session.textLength);
-                if (!isNaN(length)) {
-                    totalWords += length;
-                }
+                if (!isNaN(length)) totalWords += length;
+                
+                let sCorrect = 0, sAlmost = 0, sWrong = 0;
                 
                 if (session.results && Array.isArray(session.results)) {
                     session.results.forEach(res => {
-                        if (res.status === 'correct') totalCorrect++;
-                        if (res.status === 'almost') totalAlmost++;
-                        if (res.status === 'wrong') totalWrong++;
+                        if (res.status === 'correct') sCorrect++;
+                        if (res.status === 'almost') sAlmost++;
+                        if (res.status === 'wrong') sWrong++;
                     });
                 }
+                
+                totalCorrect += sCorrect;
+                totalAlmost += sAlmost;
+                totalWrong += sWrong;
+
+                // Popolamento array per grafico (Usa data o ID come label sull'asse X)
+                let label = session.id ? `Sess. #${session.id}` : session.date.split(',')[0];
+                chartLabels.push(label);
+                chartTotalWords.push(length || 0);
+                chartCorrectWords.push(sCorrect);
+                chartAlmostWords.push(sAlmost);
+                chartWrongWords.push(sWrong);
             });
 
+            // Scrittura Quantità (Fallback a 0 per NaN)
             document.getElementById('stat-sessions').innerText = isNaN(totalSessions) ? 0 : totalSessions;
             document.getElementById('stat-words').innerText = isNaN(totalWords) ? 0 : totalWords;
             document.getElementById('stat-correct').innerText = isNaN(totalCorrect) ? 0 : totalCorrect;
             document.getElementById('stat-almost').innerText = isNaN(totalAlmost) ? 0 : totalAlmost;
             document.getElementById('stat-wrong').innerText = isNaN(totalWrong) ? 0 : totalWrong;
 
-            // Aggiorna l'elenco visivo delle sessioni
-            const sessionListDiv = document.getElementById('session-list');
-            if (sessionListDiv) {
-                sessionListDiv.innerHTML = '';
-                if (sessionHistory.length === 0) {
-                    sessionListDiv.innerHTML = '<p style="color: #777;">Nessuna sessione registrata. Inizia la pratica per vedere qui lo storico!</p>';
-                } else {
-                    // Clona l'array e invertilo per mostrare prima i più recenti
-                    [...sessionHistory].reverse().forEach((session, index) => {
-                        const div = document.createElement('div');
-                        div.className = 'session-item';
-                        
-                        // Retrocompatibilità per sessioni vecchie senza ID o data formattata
-                        let dId = session.id || (sessionHistory.length - index); 
-                        let dDate = session.date || new Date(session.rawDate || Date.now()).toLocaleString('it-IT');
-
-                        let sCorrect = 0, sAlmost = 0, sWrong = 0;
-                        if(session.results) {
-                             session.results.forEach(r => {
-                                 if(r.status==='correct') sCorrect++;
-                                 if(r.status==='almost') sAlmost++;
-                                 if(r.status==='wrong') sWrong++;
-                             });
-                        }
-
-                        div.innerHTML = `
-                            <div class="session-info">
-                                <strong>Sessione #${dId}</strong> - ${dDate}
-                            </div>
-                            <div class="session-stats">
-                                <span style="color: #28a745;">✔ ${sCorrect}</span> 
-                                <span style="color: #fd7e14;">~ ${sAlmost}</span> 
-                                <span style="color: #dc3545;">✖ ${sWrong}</span>
-                            </div>
-                        `;
-                        sessionListDiv.appendChild(div);
-                    });
-                }
+            // Calcolo Efficacia (%)
+            let effCorrect = 0, effAlmost = 0, effWrong = 0;
+            if (totalWords > 0) {
+                effCorrect = ((totalCorrect / totalWords) * 100).toFixed(1);
+                effAlmost = ((totalAlmost / totalWords) * 100).toFixed(1);
+                effWrong = ((totalWrong / totalWords) * 100).toFixed(1);
             }
+            
+            document.getElementById('eff-correct').innerText = effCorrect + '%';
+            document.getElementById('eff-almost').innerText = effAlmost + '%';
+            document.getElementById('eff-wrong').innerText = effWrong + '%';
+
+            // Generazione Grafico
+            renderChart(chartLabels, chartTotalWords, chartCorrectWords, chartAlmostWords, chartWrongWords);
         }
 
-        updateDashboard();
+        function renderChart(labels, totalData, correctData, almostData, wrongData) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            // Distruggi il grafico precedente se esiste (altrimenti Chart.js dà errore)
+            if (myChartInstance) {
+                myChartInstance.destroy();
+            }
+
+            myChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Parole Lette in Totale',
+                            data: totalData,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Parole Verdi (Corrette)',
+                            data: correctData,
+                            borderColor: '#28a745',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Parole Gialle (Migliorabili)',
+                            data: almostData,
+                            borderColor: '#fd7e14',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Parole Rosse (Errate)',
+                            data: wrongData,
+                            borderColor: '#dc3545',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+            // Assicuriamoci che il canvas non scompaia azzerando la sua altezza
+            document.getElementById('performanceChart').style.minHeight = '300px';
+        }
+
+        // Inizializza la dashboard all'avvio chiamando i filtri (che calcolano il totale per default)
+        applyFilters();
 
     </script>
 </body>
