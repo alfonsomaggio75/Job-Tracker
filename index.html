@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>English Pronunciation Tutor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- STILI DI BASE --- */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
             color: #333;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
             box-sizing: border-box;
@@ -93,7 +94,7 @@
 
         /* --- STILI LETTURA E CONFIGURAZIONE --- */
         #text-display, #practice-display {
-            font-size: 24px; 
+            font-size: 24px;
             line-height: 1.8;
             padding: 20px;
             border: 1px dashed #ccc;
@@ -104,7 +105,8 @@
         }
         .highlight { background-color: #ffeb3b; border-radius: 3px; }
         .voice-item {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex;
+            align-items: center; justify-content: space-between;
             padding: 10px; border-bottom: 1px solid #eee; gap: 10px;
         }
         .voice-item:last-child { border-bottom: none; }
@@ -113,7 +115,7 @@
 
         /* --- NUOVI STILI PER LA PRONUNCIA --- */
         .word-active {
-            background-color: #ffeb3b; 
+            background-color: #ffeb3b;
             border-bottom: 3px solid #ff9800;
             border-radius: 3px;
             padding-bottom: 2px;
@@ -130,13 +132,14 @@
             display: none;
         }
         .error-btn {
-            background-color: white; color: #333;
+            background-color: white;
+            color: #333;
             border: 1px solid #ccc; margin: 5px;
             border-radius: 20px; padding: 5px 15px;
         }
         .error-btn:hover { background-color: #f8f9fa; }
 
-        /* Stile per l'animazione di caricamento (Bluetooth Fix) */
+        /* Stile per l'animazione di caricamento */
         #loading-evaluation {
             display: none;
             text-align: center;
@@ -159,10 +162,74 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* --- STILI DASHBOARD --- */
+        .dash-cards {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .dash-card {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            flex: 1;
+            min-width: 140px;
+            text-align: center;
+        }
+        .dash-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #666; }
+        .dash-card .value { font-size: 24px; font-weight: bold; color: #007bff; }
+        .dash-card.green .value { color: #28a745; }
+        .dash-card.yellow .value { color: #fd7e14; }
+        .dash-card.red .value { color: #dc3545; }
+        
+        .dash-filters {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .dash-filters input[type="date"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .dash-chart-container {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .dash-effectiveness {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .eff-box {
+            flex: 1;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            min-width: 120px;
+        }
+        .eff-green { background-color: #28a745; }
+        .eff-yellow { background-color: #fd7e14; }
+        .eff-red { background-color: #dc3545; }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
             .voice-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
+            .dash-cards, .dash-effectiveness { flex-direction: column; }
         }
     </style>
 </head>
@@ -172,7 +239,8 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('reading-view', this)">1. Lettura</button>
             <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">⚙️ Voci</button>
+            <button class="tab-btn" onclick="switchTab('dashboard-view', this); renderDashboard();">3. Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">4. ⚙️ Voci</button>
         </div>
 
         <div id="reading-view" class="view-section active">
@@ -211,9 +279,63 @@
             </div>
 
             <div id="practice-results">
-                <h3>Resoconto Errori</h3>
+                <h3>Resoconto Errori (Sessione Corrente)</h3>
                 <p>Clicca sulle parole per riascoltarne la pronuncia.</p>
                 <div id="error-list"></div>
+            </div>
+        </div>
+
+        <div id="dashboard-view" class="view-section">
+            <h2>Dashboard Statistiche</h2>
+            
+            <div class="dash-filters">
+                <label>Dal: <input type="date" id="filter-start"></label>
+                <label>Al: <input type="date" id="filter-end"></label>
+                <button class="secondary" onclick="renderDashboard()">Applica Filtro</button>
+                <button class="secondary" onclick="clearFilters()">Mostra Totale</button>
+            </div>
+
+            <div class="dash-cards">
+                <div class="dash-card">
+                    <h4>Sessioni Avviate</h4>
+                    <div class="value" id="dash-sessions">0</div>
+                </div>
+                <div class="dash-card">
+                    <h4>Tot. Parole Lette</h4>
+                    <div class="value" id="dash-words">0</div>
+                </div>
+                <div class="dash-card green">
+                    <h4>Corrette</h4>
+                    <div class="value" id="dash-green">0</div>
+                </div>
+                <div class="dash-card yellow">
+                    <h4>Migliorabili</h4>
+                    <div class="value" id="dash-yellow">0</div>
+                </div>
+                <div class="dash-card red">
+                    <h4>Errate</h4>
+                    <div class="value" id="dash-red">0</div>
+                </div>
+            </div>
+
+            <div class="dash-chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+
+            <h3 style="margin-top: 30px;">Efficacia nel Tempo (Periodo Selezionato)</h3>
+            <div class="dash-effectiveness">
+                <div class="eff-box eff-green">
+                    <div style="font-size: 14px;">Corrette / Lette</div>
+                    <div id="eff-green-val" style="font-size: 22px;">0%</div>
+                </div>
+                <div class="eff-box eff-yellow">
+                    <div style="font-size: 14px;">Migliorabili / Lette</div>
+                    <div id="eff-yellow-val" style="font-size: 22px;">0%</div>
+                </div>
+                <div class="eff-box eff-red">
+                    <div style="font-size: 14px;">Errate / Lette</div>
+                    <div id="eff-red-val" style="font-size: 22px;">0%</div>
+                </div>
             </div>
         </div>
 
@@ -229,7 +351,8 @@
         const speedValue = document.getElementById('speed-value');
         let availableVoices = []; 
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
-        let isSystemSpeaking = false; // NUOVA VARIABILE: Evita che il mic ascolti la voce del PC
+        let isSystemSpeaking = false; 
+        let myChart = null; // Variabile per il grafico Chart.js
         
         // --- FUNZIONI COMUNI ---
         function switchTab(tabId, btnElement) {
@@ -239,7 +362,7 @@
             btnElement.classList.add('active');
             
             window.speechSynthesis.cancel();
-            if (isPracticing) forceStopPractice(); // Ferma il microfono
+            if (isPracticing) forceStopPractice(); 
         }
 
         speedInput.addEventListener('input', function() { speedValue.textContent = this.value + 'x'; });
@@ -279,7 +402,7 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 if (favoriteVoices.includes(voice.name)) checkbox.checked = true;
-                
+
                 checkbox.onchange = (e) => {
                     if (e.target.checked) {
                         if (!favoriteVoices.includes(voice.name)) favoriteVoices.push(voice.name);
@@ -323,7 +446,7 @@
             speechSynthesis.onvoiceschanged = loadAndRenderVoices;
         }
 
-        // --- FUNZIONE PER PRONUNCIARE UNA PAROLA (Aggiornata per non farla ascoltare al mic) ---
+        // --- FUNZIONE PER PRONUNCIARE UNA PAROLA ---
         function speakSingleWord(word) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(word);
@@ -332,15 +455,13 @@
                 if (chosenVoice) utterance.voice = chosenVoice;
             }
             utterance.lang = 'en-US';
-            
-            // Blocchiamo il riconoscimento mentre il computer parla
             utterance.onstart = () => { isSystemSpeaking = true; };
             utterance.onend = () => { isSystemSpeaking = false; };
             
             window.speechSynthesis.speak(utterance);
         }
 
-        // --- SEZIONE 1: LOGICA LETTURA (Invariata) ---
+        // --- SEZIONE 1: LOGICA LETTURA ---
         let readWordsArray = [];
         let readGlobalIndex = 0; 
         let readIsPaused = false;
@@ -379,7 +500,6 @@
             }
             u.lang = 'en-US';
             u.rate = parseFloat(speedInput.value);
-
             let localIndexCount = 0;
             u.onboundary = function(e) {
                 if (e.name === 'word') {
@@ -411,7 +531,6 @@
             readFromIndex(readGlobalIndex);
         }
 
-
         // --- SEZIONE 2: LOGICA PRATICA PRONUNCIA ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
@@ -419,9 +538,9 @@
         
         let practiceExpectedRaw = [];   
         let practiceExpectedClean = []; 
-        let currentTargetIndex = 0;     
-        let currentWordRetries = 0; // NUOVO: Tiene traccia dei tentativi (max 3)
-        let lastTranscriptLength = 0;   
+        let currentTargetIndex = 0;
+        let currentWordRetries = 0; 
+        let lastTranscriptLength = 0;
         let sessionResults = [];        
 
         function getSimilarity(a, b) {
@@ -445,7 +564,7 @@
             const similarity = getSimilarity(spoken, expected);
             if (similarity >= 0.75) return 'correct'; 
             if (similarity >= 0.40) return 'almost';  
-            return 'wrong'; 
+            return 'wrong';
         }
 
         function initRecognition() {
@@ -459,7 +578,6 @@
             recognition.lang = 'en-US';
 
             recognition.onresult = (event) => {
-                // Se il computer sta parlando (lettura errore), ignoriamo il microfono!
                 if (isSystemSpeaking) return;
 
                 let fullTranscript = "";
@@ -475,7 +593,6 @@
                     lastTranscriptLength = spokenWords.length;
                 }
             };
-
             recognition.onend = () => {
                 if (isPracticing) {
                     try { recognition.start(); } catch(e){}
@@ -492,7 +609,6 @@
                 let originalWord = practiceExpectedRaw[currentTargetIndex];
                 let evalResult = evaluatePronunciation(spokenWord, expectedWord);
 
-                // Look-ahead: attivato SOLO se siamo al primo tentativo (evita salti dovuti al rumore)
                 if (evalResult === 'wrong' && currentWordRetries === 0 && currentTargetIndex + 1 < practiceExpectedClean.length) {
                     let nextExpected = practiceExpectedClean[currentTargetIndex + 1];
                     let nextEval = evaluatePronunciation(spokenWord, nextExpected);
@@ -510,46 +626,33 @@
                 }
 
                 const targetSpan = document.getElementById('p-word-' + currentTargetIndex);
-
                 if (evalResult === 'correct' || evalResult === 'almost') {
-                    // Parola azzeccata (al primo colpo o dopo riprova)
                     targetSpan.className = `word-${evalResult}`;
-                    
-                    // Salviamo il risultato solo se non era già stata registrata come errore grave
                     if (currentWordRetries === 0) {
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: evalResult });
                     }
-                    
                     currentTargetIndex++;
-                    currentWordRetries = 0; // Resetta tentativi
-
+                    currentWordRetries = 0; 
                 } else {
-                    // Parola sbagliata o rumore di fondo
                     currentWordRetries++;
-                    targetSpan.className = 'word-wrong word-active'; // Diventa rossa MA rimane attiva (sottolineata)
+                    targetSpan.className = 'word-wrong word-active'; 
 
                     if (currentWordRetries >= 3) {
-                        // Terzo tentativo fallito!
                         sessionResults.push({ original: originalWord, clean: expectedWord, status: 'wrong' });
-                        targetSpan.className = 'word-wrong'; // Togli sottolineatura attiva
-                        
-                        // Pronuncia automatica (il mic viene ignorato grazie a isSystemSpeaking)
-                        speakSingleWord(originalWord); 
-                        
+                        targetSpan.className = 'word-wrong';
+                        speakSingleWord(originalWord);
                         currentTargetIndex++;
                         currentWordRetries = 0;
                     } else {
-                        // Aspettiamo un altro tentativo (interrompe il foreach per non avanzare il cursore)
-                        return; 
+                        return;
                     }
                 }
 
-                // Aggiorna l'evidenziazione della parola successiva
                 document.querySelectorAll('.word-active').forEach(el => el.classList.remove('word-active'));
                 if (currentTargetIndex < practiceExpectedClean.length) {
                     document.getElementById('p-word-' + currentTargetIndex).classList.add('word-active');
                 } else {
-                    initiateStopSequence(); // Fine del testo
+                    initiateStopSequence();
                 }
             });
         }
@@ -567,7 +670,6 @@
             }
 
             if (!recognition && !initRecognition()) return;
-
             practiceExpectedRaw = text.split(/\s+/);
             practiceExpectedClean = practiceExpectedRaw.map(w => w.toLowerCase().replace(/[^\w]/g, ''));
             currentTargetIndex = 0;
@@ -583,14 +685,12 @@
                 span.innerText = w + ' ';
                 pArea.appendChild(span);
             });
-
             if (practiceExpectedRaw.length > 0) {
                 document.getElementById('p-word-0').className = 'word-active';
             }
 
             document.getElementById('practice-results').style.display = 'none';
             document.getElementById('loading-evaluation').style.display = 'none';
-
             try {
                 recognition.start();
                 isPracticing = true;
@@ -601,7 +701,6 @@
             } catch (e) { console.error(e); }
         }
 
-        // Avvia la procedura di stop con l'attesa per il Bluetooth
         function initiateStopSequence() {
             if (recognition) recognition.stop();
             isPracticing = false;
@@ -610,19 +709,15 @@
             btn.innerText = '🎙️ Riavvia Pratica';
             btn.classList.remove('secondary');
             btn.classList.add('success');
-
-            // Mostriamo l'animazione di caricamento
             document.getElementById('loading-evaluation').style.display = 'block';
             document.getElementById('practice-results').style.display = 'none';
 
-            // Attendiamo 5 secondi per permettere al Bluetooth di ricollegarsi ad alta qualità
             setTimeout(() => {
                 document.getElementById('loading-evaluation').style.display = 'none';
                 elaborateResults();
             }, 5000);
         }
 
-        // Arresto forzato senza delay (usato se l'utente cambia scheda)
         function forceStopPractice() {
             if (recognition) recognition.stop();
             isPracticing = false;
@@ -640,26 +735,35 @@
             let wordStats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             let sessionErrors = [];
             
+            // Calcolo conteggi specifici della sessione
+            let sessionCorrectCount = sessionResults.filter(r => r.status === 'correct').length;
+            let sessionAlmostCount = sessionResults.filter(r => r.status === 'almost').length;
+            let sessionWrongCount = sessionResults.filter(r => r.status === 'wrong').length;
+
             sessionResults.forEach(item => {
                 if (item.status === 'wrong' || item.status === 'almost') {
                     if (!wordStats[item.clean]) {
                         wordStats[item.clean] = { wrong: 0, almost: 0 };
                     }
                     wordStats[item.clean][item.status]++;
-                    
                     if (!sessionErrors.includes(item.clean)) {
                         sessionErrors.push(item.clean);
                     }
                 }
             });
-
             localStorage.setItem('myWordStats', JSON.stringify(wordStats));
 
             let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
+            
+            // Creazione log dettagliato della sessione
             sessionHistory.push({
+                id: sessionHistory.length + 1,
                 date: new Date().toISOString(),
-                textLength: practiceExpectedClean.length,
-                results: sessionResults
+                textLength: practiceExpectedClean.length, // N. parole del testo escl. punteggiatura
+                attempted: currentTargetIndex, // Parole effettivamente lette
+                correct: sessionCorrectCount,
+                almost: sessionAlmostCount,
+                wrong: sessionWrongCount
             });
             localStorage.setItem('mySessionLog', JSON.stringify(sessionHistory));
 
@@ -681,6 +785,129 @@
             }
 
             if(currentTargetIndex > 0) resultsDiv.style.display = 'block';
+            
+            // Aggiorna silente la dashboard se è attiva
+            if (document.getElementById('dashboard-view').classList.contains('active')) {
+                renderDashboard();
+            }
+        }
+
+        // --- DASHBOARD E GRAFICI ---
+        function clearFilters() {
+            document.getElementById('filter-start').value = '';
+            document.getElementById('filter-end').value = '';
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            let history = JSON.parse(localStorage.getItem('mySessionLog')) || [];
+            const startDateStr = document.getElementById('filter-start').value;
+            const endDateStr = document.getElementById('filter-end').value;
+
+            // Filtraggio Date
+            let filteredHistory = history;
+            if (startDateStr && endDateStr) {
+                const sDate = new Date(startDateStr);
+                const eDate = new Date(endDateStr + 'T23:59:59');
+                filteredHistory = history.filter(s => {
+                    let d = new Date(s.date);
+                    return d >= sDate && d <= eDate;
+                });
+            }
+
+            // Aggregazione Dati per Dashboard e Grafico
+            let totalSessions = filteredHistory.length;
+            let totalWordsRead = 0, totalGreen = 0, totalYellow = 0, totalRed = 0;
+            
+            let chartLabels = [];
+            let dataTotal = [], dataGreen = [], dataYellow = [], dataRed = [];
+
+            filteredHistory.forEach(s => {
+                totalWordsRead += s.attempted;
+                totalGreen += s.correct;
+                totalYellow += s.almost;
+                totalRed += s.wrong;
+
+                const dateObj = new Date(s.date);
+                chartLabels.push(`S. ${s.id} (${dateObj.toLocaleDateString()})`);
+                dataTotal.push(s.attempted);
+                dataGreen.push(s.correct);
+                dataYellow.push(s.almost);
+                dataRed.push(s.wrong);
+            });
+
+            // Aggiorna le Cards Riepilogative
+            document.getElementById('dash-sessions').innerText = totalSessions;
+            document.getElementById('dash-words').innerText = totalWordsRead;
+            document.getElementById('dash-green').innerText = totalGreen;
+            document.getElementById('dash-yellow').innerText = totalYellow;
+            document.getElementById('dash-red').innerText = totalRed;
+
+            // Aggiorna Percentuali di Efficacia
+            const effG = totalWordsRead > 0 ? Math.round((totalGreen / totalWordsRead) * 100) : 0;
+            const effY = totalWordsRead > 0 ? Math.round((totalYellow / totalWordsRead) * 100) : 0;
+            const effR = totalWordsRead > 0 ? Math.round((totalRed / totalWordsRead) * 100) : 0;
+            
+            document.getElementById('eff-green-val').innerText = effG + '%';
+            document.getElementById('eff-yellow-val').innerText = effY + '%';
+            document.getElementById('eff-red-val').innerText = effR + '%';
+
+            // Disegna il Grafico Chart.js
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            if (myChart) myChart.destroy(); // Distruggi l'istanza precedente prima di ridisegnare
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            label: 'Totale Lette',
+                            data: dataTotal,
+                            borderColor: '#007bff',
+                            backgroundColor: '#007bff',
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Verdi (Corrette)',
+                            data: dataGreen,
+                            borderColor: '#28a745',
+                            backgroundColor: '#28a745',
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Gialle (Migliorabili)',
+                            data: dataYellow,
+                            borderColor: '#fd7e14',
+                            backgroundColor: '#fd7e14',
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Rosse (Errate)',
+                            data: dataRed,
+                            borderColor: '#dc3545',
+                            backgroundColor: '#dc3545',
+                            fill: false,
+                            tension: 0.1,
+                            hidden: true // Nascosta di default, attivabile cliccando la legenda
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Numero di Parole' } },
+                        x: { title: { display: true, text: 'Sessione e Data' } }
+                    }
+                }
+            });
         }
     </script>
 </body>
