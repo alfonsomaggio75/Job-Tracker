@@ -66,6 +66,8 @@
         button.secondary:hover { background-color: #5a6268; }
         button.success { background-color: #28a745; font-size: 16px; font-weight: bold; padding: 15px;}
         button.success:hover { background-color: #218838; }
+        button.danger { background-color: #dc3545; }
+        button.danger:hover { background-color: #c82333; }
 
         /* --- STILI TABS (SCHEDE) --- */
         .tabs {
@@ -205,6 +207,16 @@
             margin-top: 20px;
         }
 
+        /* Stili per la gestione dati in config */
+        .data-management-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        .data-management-box h4 { margin-top: 0; margin-bottom: 10px; }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
@@ -220,7 +232,7 @@
             <button class="tab-btn active" onclick="switchTab('reading-view', this)">1. Lettura</button>
             <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia</button>
             <button class="tab-btn" onclick="switchTab('dashboard-view', this)">3. Statistiche</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">4. ⚙️ Voci</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">4. ⚙️ Impostazioni</button>
         </div>
 
         <div id="reading-view" class="view-section active">
@@ -327,6 +339,24 @@
         <div id="config-view" class="view-section">
             <h2>Voci Preferite</h2>
             <div id="voices-list"></div>
+
+            <hr style="margin: 40px 0 20px 0; border: 1px solid #eee;">
+            <h2>Gestione Dati</h2>
+            <p style="color: #666; font-size: 14px;">Elimina i dati delle sessioni passate. L'operazione non può essere annullata.</p>
+            
+            <div class="data-management-box">
+                <h4>Elimina per data</h4>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                    <label><strong>Da:</strong> <input type="date" id="delete-start"></label>
+                    <label><strong>A:</strong> <input type="date" id="delete-end"></label>
+                </div>
+                <button class="secondary" onclick="deleteHistoryByDate()">🗑️ Elimina selezione</button>
+            </div>
+
+            <div class="data-management-box" style="background: #fff3cd; border-color: #ffeeba;">
+                <h4 style="color: #856404;">Reset Completo</h4>
+                <button class="danger" onclick="deleteAllHistory()">⚠️ Elimina TUTTO lo storico</button>
+            </div>
         </div>
     </div>
 
@@ -337,7 +367,7 @@
         let availableVoices = []; 
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
         let isSystemSpeaking = false; 
-        let myChartInstance = null; // Variabile per il grafico
+        let myChartInstance = null; 
         
         // --- FUNZIONI COMUNI ---
         function switchTab(tabId, btnElement) {
@@ -349,7 +379,6 @@
             window.speechSynthesis.cancel();
             if (isPracticing) forceStopPractice(); 
             
-            // Se si apre la dashboard, aggiorna il grafico
             if(tabId === 'dashboard-view') {
                 applyFilters();
             }
@@ -770,12 +799,10 @@
 
             if(currentTargetIndex > 0) resultsDiv.style.display = 'block';
             
-            // Aggiorna il grafico dopo il salvataggio
             applyFilters();
         }
 
         // --- GESTIONE DASHBOARD, FILTRI E GRAFICO ---
-        
         function resetFilters() {
             document.getElementById('filter-start').value = '';
             document.getElementById('filter-end').value = '';
@@ -789,10 +816,8 @@
 
             let filteredData = sessionHistory;
 
-            // Filtro per Data
             if (startDateStr || endDateStr) {
                 filteredData = sessionHistory.filter(session => {
-                    // Controllo compatibilità con vecchie sessioni (che non avevano rawDate)
                     let sessionDateObj = session.rawDate ? new Date(session.rawDate) : new Date(); 
                     sessionDateObj.setHours(0,0,0,0);
                     
@@ -821,7 +846,6 @@
             let totalAlmost = 0;
             let totalWrong = 0;
 
-            // Dati per il grafico
             let chartLabels = [];
             let chartTotalWords = [];
             let chartCorrectWords = [];
@@ -846,8 +870,7 @@
                 totalAlmost += sAlmost;
                 totalWrong += sWrong;
 
-                // Popolamento array per grafico (Usa data o ID come label sull'asse X)
-                let label = session.id ? `Sess. #${session.id}` : session.date.split(',')[0];
+                let label = session.id ? `Sess. #${session.id}` : (session.date ? session.date.split(',')[0] : 'Log');
                 chartLabels.push(label);
                 chartTotalWords.push(length || 0);
                 chartCorrectWords.push(sCorrect);
@@ -855,14 +878,12 @@
                 chartWrongWords.push(sWrong);
             });
 
-            // Scrittura Quantità (Fallback a 0 per NaN)
             document.getElementById('stat-sessions').innerText = isNaN(totalSessions) ? 0 : totalSessions;
             document.getElementById('stat-words').innerText = isNaN(totalWords) ? 0 : totalWords;
             document.getElementById('stat-correct').innerText = isNaN(totalCorrect) ? 0 : totalCorrect;
             document.getElementById('stat-almost').innerText = isNaN(totalAlmost) ? 0 : totalAlmost;
             document.getElementById('stat-wrong').innerText = isNaN(totalWrong) ? 0 : totalWrong;
 
-            // Calcolo Efficacia (%)
             let effCorrect = 0, effAlmost = 0, effWrong = 0;
             if (totalWords > 0) {
                 effCorrect = ((totalCorrect / totalWords) * 100).toFixed(1);
@@ -874,14 +895,12 @@
             document.getElementById('eff-almost').innerText = effAlmost + '%';
             document.getElementById('eff-wrong').innerText = effWrong + '%';
 
-            // Generazione Grafico
             renderChart(chartLabels, chartTotalWords, chartCorrectWords, chartAlmostWords, chartWrongWords);
         }
 
         function renderChart(labels, totalData, correctData, almostData, wrongData) {
             const ctx = document.getElementById('performanceChart').getContext('2d');
             
-            // Distruggi il grafico precedente se esiste (altrimenti Chart.js dà errore)
             if (myChartInstance) {
                 myChartInstance.destroy();
             }
@@ -938,11 +957,58 @@
                     }
                 }
             });
-            // Assicuriamoci che il canvas non scompaia azzerando la sua altezza
             document.getElementById('performanceChart').style.minHeight = '300px';
         }
 
-        // Inizializza la dashboard all'avvio chiamando i filtri (che calcolano il totale per default)
+        // --- GESTIONE DATI (Miglioramento 1) ---
+        function deleteAllHistory() {
+            if(confirm("Sei sicuro di voler eliminare TUTTO lo storico delle tue sessioni e gli errori registrati? Questa operazione non può essere annullata.")) {
+                localStorage.removeItem('mySessionLog');
+                localStorage.removeItem('myWordStats');
+                alert("Tutto lo storico è stato eliminato con successo.");
+                applyFilters(); 
+            }
+        }
+
+        function deleteHistoryByDate() {
+            const startStr = document.getElementById('delete-start').value;
+            const endStr = document.getElementById('delete-end').value;
+
+            if(!startStr && !endStr) {
+                alert("Seleziona almeno una data di inizio o fine per definire l'intervallo.");
+                return;
+            }
+
+            if(confirm("Sei sicuro di voler eliminare lo storico delle sessioni per le date selezionate?")) {
+                let sessionHistory = JSON.parse(localStorage.getItem('mySessionLog')) || [];
+                
+                let filteredHistory = sessionHistory.filter(session => {
+                    let sessionDateObj = session.rawDate ? new Date(session.rawDate) : new Date();
+                    sessionDateObj.setHours(0,0,0,0);
+                    
+                    let isToDelete = true;
+                    if (startStr) {
+                        let startObj = new Date(startStr);
+                        startObj.setHours(0,0,0,0);
+                        if (sessionDateObj < startObj) isToDelete = false;
+                    }
+                    if (endStr) {
+                        let endObj = new Date(endStr);
+                        endObj.setHours(23,59,59,999);
+                        if (sessionDateObj > endObj) isToDelete = false;
+                    }
+                    
+                    // Manteniamo solo le sessioni che NON rientrano nei criteri di eliminazione
+                    return !isToDelete; 
+                });
+
+                localStorage.setItem('mySessionLog', JSON.stringify(filteredHistory));
+                alert("Lo storico del periodo selezionato è stato eliminato.");
+                applyFilters(); 
+            }
+        }
+
+        // Inizializza dashboard
         applyFilters();
 
     </script>
