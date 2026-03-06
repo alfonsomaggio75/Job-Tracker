@@ -33,7 +33,7 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        select, input[type="date"] {
+        select, input[type="text"], input[type="date"] {
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
@@ -217,7 +217,7 @@
         }
         .data-management-box h4 { margin-top: 0; margin-bottom: 10px; }
 
-        /* --- STILI VOCABOLARIO E MODALE DIZIONARIO (Miglioramento 2, 3 e 4) --- */
+        /* --- STILI VOCABOLARIO E MODALE DIZIONARIO --- */
         .vocab-word {
             background-color: white;
             border: 1px solid #ccc;
@@ -291,6 +291,32 @@
             text-decoration: none;
         }
 
+        /* --- STILI PREFERENZE ARGOMENTI (Miglioramento 5) --- */
+        .topic-chip {
+            background-color: #e9ecef;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .topic-chip .remove-topic {
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            background: none;
+            padding: 0;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .topic-chip .remove-topic:hover {
+            color: #a71d2a;
+        }
+
         @media (max-width: 600px) {
             .controls { flex-direction: column; align-items: stretch; }
             .voice-item { flex-direction: column; align-items: flex-start; }
@@ -308,7 +334,7 @@
             <button class="tab-btn" onclick="switchTab('practice-view', this)">2. Pratica Pronuncia</button>
             <button class="tab-btn" onclick="switchTab('dashboard-view', this)">3. Statistiche</button>
             <button class="tab-btn" onclick="switchTab('vocabulary-view', this)">4. Vocabolario</button>
-            <button class="tab-btn" onclick="switchTab('config-view', this)">5. ⚙️ Impostazioni</button>
+            <button class="tab-btn" onclick="switchTab('config-view', this)">5. ⚙️ Preferenze</button>
         </div>
 
         <div id="reading-view" class="view-section active">
@@ -430,6 +456,20 @@
         </div>
 
         <div id="config-view" class="view-section">
+            
+            <h2>Argomenti Preferiti</h2>
+            <p style="color: #666; font-size: 14px;">Aggiungi i tuoi argomenti di interesse (es. Tecnologia, Sport, Viaggi). L'IA li userà per generare testi su misura per te.</p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <input type="text" id="topic-input" placeholder="Scrivi un argomento..." style="flex-grow: 1; margin-bottom: 0;">
+                <button class="success" style="padding: 10px 20px; font-size: 14px;" onclick="addTopic()">➕ Aggiungi</button>
+            </div>
+            
+            <div id="topics-list" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                </div>
+
+            <hr style="margin: 40px 0 20px 0; border: 1px solid #eee;">
+
             <h2>Voci Preferite</h2>
             <div id="voices-list"></div>
 
@@ -469,6 +509,7 @@
         const speedValue = document.getElementById('speed-value');
         let availableVoices = []; 
         let favoriteVoices = JSON.parse(localStorage.getItem('myFavVoices')) || [];
+        let preferredTopics = JSON.parse(localStorage.getItem('myPreferredTopics')) || []; // Variabile Preferenze (Miglioramento 5)
         let isSystemSpeaking = false; 
         let myChartInstance = null; 
         
@@ -581,6 +622,45 @@
             utterance.onend = () => { isSystemSpeaking = false; };
             
             window.speechSynthesis.speak(utterance);
+        }
+
+        // --- GESTIONE ARGOMENTI PREFERITI (Miglioramento 5) ---
+        function renderTopics() {
+            const list = document.getElementById('topics-list');
+            if(!list) return;
+            list.innerHTML = '';
+            if(preferredTopics.length === 0) {
+                list.innerHTML = '<span style="color: #777; font-size: 14px;">Nessun argomento aggiunto. Inizia ad aggiungerne uno qui sopra.</span>';
+                return;
+            }
+            preferredTopics.forEach((topic, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'topic-chip';
+                chip.innerHTML = `
+                    ${topic} 
+                    <button class="remove-topic" onclick="removeTopic(${index})" title="Rimuovi">&times;</button>
+                `;
+                list.appendChild(chip);
+            });
+        }
+
+        function addTopic() {
+            const input = document.getElementById('topic-input');
+            const val = input.value.trim();
+            if(val && !preferredTopics.map(t => t.toLowerCase()).includes(val.toLowerCase())) {
+                preferredTopics.push(val);
+                localStorage.setItem('myPreferredTopics', JSON.stringify(preferredTopics));
+                input.value = '';
+                renderTopics();
+            } else if (val) {
+                alert("Questo argomento è già nella lista!");
+            }
+        }
+
+        function removeTopic(index) {
+            preferredTopics.splice(index, 1);
+            localStorage.setItem('myPreferredTopics', JSON.stringify(preferredTopics));
+            renderTopics();
         }
 
         // --- SEZIONE 1: LOGICA LETTURA ---
@@ -1113,7 +1193,7 @@
             }
         }
 
-        // --- VOCABOLARIO E DIZIONARIO (Miglioramento 2, 3 e 4) ---
+        // --- VOCABOLARIO E DIZIONARIO ---
         function renderVocabulary() {
             const stats = JSON.parse(localStorage.getItem('myWordStats')) || {};
             const filter = document.getElementById('vocab-filter').value;
@@ -1155,7 +1235,6 @@
                     html += `<span class="badge-yellow" title="Errori Gialli">${item.almost}</span>`;
                 }
                 
-                // Miglioramento 4: Tasto approfondimento solo per parole con errori rossi
                 if (item.wrong > 0) {
                     html += `<button class="dict-btn" onclick="openDictionary(event, '${item.word}')" title="Scopri significato e fonetica">📖</button>`;
                 }
@@ -1165,9 +1244,8 @@
             });
         }
 
-        // Funzione per recuperare i dati dal dizionario (Miglioramento 4)
         function openDictionary(event, word) {
-            event.stopPropagation(); // Evita che venga riprodotto l'audio cliccando sull'icona libro
+            event.stopPropagation(); 
             
             const modal = document.getElementById('dictionary-modal');
             const wordTitle = document.getElementById('dict-word');
@@ -1181,20 +1259,17 @@
             meaningsDiv.innerHTML = '<p>Caricamento definizioni...</p>';
             synonymsSpan.innerHTML = '<em>Caricamento...</em>';
 
-            // API gratuita che si appoggia ai database Oxford/Wiktionary
             fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
                 .then(res => {
-                    if(!res.ok) throw new Error("Parola non trovata nel dizionario");
+                    if(!res.ok) throw new Error("Parola non trovata");
                     return res.json();
                 })
                 .then(data => {
                     const entry = data[0];
                     
-                    // Estrazione Fonetica
                     let phonetic = entry.phonetic || (entry.phonetics && entry.phonetics.length > 0 ? entry.phonetics.find(p => p.text)?.text : "Non disponibile");
                     phoneticSpan.innerText = phonetic || "Non disponibile";
 
-                    // Estrazione Significati
                     let meaningsHtml = '<h4 style="margin-bottom: 5px;">Significati:</h4><ul style="margin-top:0; padding-left: 20px;">';
                     entry.meanings.forEach(m => {
                         let def = m.definitions[0].definition;
@@ -1203,12 +1278,10 @@
                     meaningsHtml += '</ul>';
                     meaningsDiv.innerHTML = meaningsHtml;
 
-                    // Estrazione Sinonimi
                     let synonyms = [];
                     entry.meanings.forEach(m => {
                         if(m.synonyms && m.synonyms.length > 0) synonyms.push(...m.synonyms);
                     });
-                    // Rimuove duplicati e tiene solo i primi 5
                     synonyms = [...new Set(synonyms)].slice(0, 5);
                     synonymsSpan.innerText = synonyms.length > 0 ? synonyms.join(', ') : "Nessun sinonimo trovato.";
                 })
@@ -1219,12 +1292,10 @@
                 });
         }
 
-        // Funzione per chiudere la modale
         function closeDictionaryModal() {
             document.getElementById('dictionary-modal').style.display = 'none';
         }
 
-        // Chiude la modale se si clicca fuori dal riquadro bianco
         window.onclick = function(event) {
             const modal = document.getElementById('dictionary-modal');
             if (event.target == modal) {
@@ -1232,8 +1303,9 @@
             }
         }
 
-        // Inizializza dashboard all'avvio
+        // Inizializza l'interfaccia all'avvio
         applyFilters();
+        renderTopics(); // Inizializza i topic all'avvio
 
     </script>
 </body>
