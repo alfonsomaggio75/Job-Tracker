@@ -68,7 +68,7 @@
         button.success:hover { background-color: #218838; }
         button.danger { background-color: #dc3545; }
         button.danger:hover { background-color: #c82333; }
-        button.magic { background-color: #6f42c1; color: white; } /* Nuovo stile per tasto AI */
+        button.magic { background-color: #6f42c1; color: white; } 
         button.magic:hover { background-color: #59339d; }
 
         /* --- STILI TABS (SCHEDE) --- */
@@ -445,7 +445,7 @@
 
         <div id="vocabulary-view" class="view-section">
             <h2>Vocabolario Errori</h2>
-            <p>Clicca su una parola per ascoltarne la corretta pronuncia. Clicca su 📖 per significato e fonetica.</p>
+            <p>Clicca su una parola per ascoltarne la corretta pronuncia. Clicca su 📖 per significato e 🪄 per fare pratica con l'argomento preferito.</p>
             
             <div class="filter-section" style="margin-bottom: 20px;">
                 <label for="vocab-filter"><strong>Filtra per:</strong></label>
@@ -668,7 +668,7 @@
             renderTopics();
         }
 
-        // --- GENERAZIONE TESTO TRAMITE API WIKIPEDIA (Miglioramento 6) ---
+        // --- GENERAZIONE TESTO TRAMITE API WIKIPEDIA ---
         async function generateRandomSentences() {
             if (preferredTopics.length === 0) {
                 alert("Devi prima aggiungere almeno un Argomento Preferito (in inglese) nella scheda 'Impostazioni'.");
@@ -679,14 +679,12 @@
             const textArea = document.getElementById('text-input');
             const originalText = textArea.value;
             
-            // Seleziona un argomento casuale
             const randomTopic = preferredTopics[Math.floor(Math.random() * preferredTopics.length)];
-            const formattedTopic = randomTopic.trim().replace(/\s+/g, '_'); // Formato URL Wikipedia
+            const formattedTopic = randomTopic.trim().replace(/\s+/g, '_'); 
 
             textArea.value = `Generazione frasi in corso sul tema '${randomTopic}'...\nAttendi qualche istante.`;
 
             try {
-                // API pubblica e gratuita di Wikipedia (Nessuna API key necessaria)
                 const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(formattedTopic)}`);
                 
                 if (!response.ok) {
@@ -696,7 +694,6 @@
                 const data = await response.json();
                 
                 if (data.extract) {
-                    // Divide in frasi, prende le prime 3 e si assicura che sia massimo 500 caratteri
                     let sentences = data.extract.match(/[^.!?]+[.!?]+/g) || [data.extract];
                     let resultText = sentences.slice(0, 3).join(' ').trim();
                     
@@ -709,7 +706,6 @@
                 }
             } catch (error) {
                 console.error(error);
-                // Fallback nel caso in cui la parola non esista su wikipedia o ci sia un errore di rete
                 const fallbacks = [
                     `The topic of ${randomTopic} is fascinating and constantly evolving in our modern world. Many people dedicate their lives to studying it and understanding its impact. Let's practice our pronunciation while talking about it.`,
                     `Have you ever wondered about the history of ${randomTopic}? It holds many secrets and interesting facts that are worth exploring. Today we will focus our reading practice on this subject.`,
@@ -723,6 +719,37 @@
                 textArea.value = resultText;
             }
         }
+
+        // --- GENERATORE DI FRASI SPECIFICHE PER PAROLA (Miglioramento 7) ---
+        function generateSentenceWithWord(event, word) {
+            event.stopPropagation(); // Evita il riascolto della parola
+            
+            // Seleziona l'argomento (se non ci sono usa un fallback generale)
+            let topic = "general knowledge";
+            if (preferredTopics.length > 0) {
+                topic = preferredTopics[Math.floor(Math.random() * preferredTopics.length)];
+            }
+            
+            // Modelli linguistici per inserire Parola + Argomento in modo contestualizzato
+            const templates = [
+                `When we talk about ${topic}, the word '${word}' often comes to mind. It's an interesting concept to practice.`,
+                `In the fascinating world of ${topic}, you will frequently encounter the term '${word}'. Make sure you pronounce it correctly!`,
+                `Understanding how to say '${word}' is quite useful if you are interested in discussing ${topic} with native speakers.`,
+                `Let's practice reading the word '${word}' today, keeping our focus on the subject of ${topic}.`,
+                `A key concept in ${topic} might be directly related to what we call '${word}'. Read this carefully.`
+            ];
+            
+            // Sceglie un template a caso
+            const sentence = templates[Math.floor(Math.random() * templates.length)];
+            
+            // Incolla nella scheda Lettura
+            const textArea = document.getElementById('text-input');
+            textArea.value = sentence;
+            
+            // Sposta l'utente alla scheda Lettura in automatico
+            switchTab('reading-view', document.querySelectorAll('.tab-btn')[0]);
+        }
+
 
         // --- SEZIONE 1: LOGICA LETTURA ---
         let readWordsArray = [];
@@ -1296,9 +1323,13 @@
                     html += `<span class="badge-yellow" title="Errori Gialli">${item.almost}</span>`;
                 }
                 
+                // Pulsante Dizionario
                 if (item.wrong > 0) {
                     html += `<button class="dict-btn" onclick="openDictionary(event, '${item.word}')" title="Scopri significato e fonetica">📖</button>`;
                 }
+                
+                // Pulsante Generazione Frase (Miglioramento 7)
+                html += `<button class="dict-btn" onclick="generateSentenceWithWord(event, '${item.word}')" title="Genera una frase di pratica con questa parola">🪄</button>`;
                 
                 div.innerHTML = html;
                 vocabList.appendChild(div);
